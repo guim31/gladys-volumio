@@ -1,0 +1,19 @@
+{
+  "id": "5b0e1c6a-3f2d-4e8b-9a71-2c4d6e8f0a13",
+  "host": "http://192.0.2.40",
+  "name": "Salon",
+  "type": "device",
+  "serviceName": "Volumio",
+  "state": {
+    "status": "play",
+    "volume": 35,
+    "mute": false,
+    "artist": "Nina Simone",
+    "track": "Feeling Good",
+    "albumart": "http://192.0.2.40/albumart?cacheid=12&web=Nina%20Simone/I%20Put%20a%20Spell%20on%20You/extralarge&path=%2FINTERNAL%2FNina%20Simone&metadata=false"
+  },
+  "systemversion": "3.779",
+  "builddate": "Mon Jun  2 10:12:44 CEST 2025",
+  "variant": "volumio",
+  "hardware": "pi"
+}

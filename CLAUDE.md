@@ -9,15 +9,17 @@ A Gladys Assistant **external integration**: a Node.js service (Node 22+, ESM,
 no build step) that runs in its own sandboxed Docker container and talks to
 Gladys through
 [`@gladysassistant/integration-sdk`](https://github.com/GladysAssistant/integration-sdk-js),
-its only runtime dependency. It started from the official JavaScript template.
+its only runtime dependency. It started from the official JavaScript template; it drives **Volumio**
+network music players over their local REST API and socket.io push.
 
 ## Commands
 
 ```bash
 npm install
 npm test                                  # node --test, the built-in runner
-node --test test/devices.test.js          # one file
-node --test --test-name-pattern "plug"    # tests whose name matches
+node --test test/hub.test.js              # one file
+node --test --test-name-pattern "push"    # tests whose name matches
+node scripts/probe.mjs <ip>               # read-only check of a real player
 npm run lint                              # ESLint
 npm run format:check                      # Prettier, as the CI runs it
 npm run format                            # Prettier, fix in place
@@ -31,16 +33,25 @@ pushing.
 ## Architecture
 
 ```
-index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
+index.js                          SDK wiring only: src/app.js registers the handlers before connect()
+src/app.js                        every SDK handler -> the hub (also used by the tests), action reports
+src/hub.js                        players, discovery, reading timer, push channel, states, commands,
+                                  notifications (play, wait, restore), "track changed" trigger, logs
+src/discovery.js                  mDNS results, zones of a player -> candidate addresses
+src/devices.js                    one music device per player: features, names (4 languages), states
+src/volumio/client.js             REST client (getState, commands, replaceAndPlay...), errors by kind
+src/volumio/model.js              reading getState / getSystemInfo / browse / getQueue (pure)
+src/volumio/socket.js             socket.io client over Node's WebSocket (Engine.IO 3 and 4)
+src/art.js                        album covers for the widget, checked with validateWidgetImage
 src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
+src/widgets.js                    dashboard widget `now_playing` (manifest `widgets`)
+src/texts.js                      every user-facing text of the code, in en/fr/de/es
 src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
+scripts/probe.mjs                 read-only check of a real player (not in the image)
 gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
+docs/{en,fr,de,es}.md             user documentation, re-hosted by Gladys (en and fr mandatory)
 test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
+                                  and helpers/fakeVolumio.js (built from test/fixtures/volumio)
 .github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
 ```
 
@@ -56,8 +67,7 @@ test/                             node --test, against the SDK's fake Gladys (in
   writable volume. Never log tokens, passwords or API keys.
 - **Versions belong to the Release workflow** (Actions → Release). Never edit
   `version` in `package.json` or in the manifest, nor the `docker_image` tag,
-  by hand — except on the README's hand-pushed tag path, which bumps all three
-  together before tagging. `test/manifest.test.js` checks they agree.
+  by hand. `test/manifest.test.js` checks they agree.
 - **Changelog.** Every user-visible change adds a line under `## [Unreleased]`
   in `CHANGELOG.md` (`### Added`, `Changed`, `Fixed`, `Removed`, `Security`).
   Never write a version heading: the Release workflow moves the section, and it
@@ -70,8 +80,10 @@ test/                             node --test, against the SDK's fake Gladys (in
   `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
   code (defaults, action, scene and widget handlers): change both sides
   together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
+- **User-facing text** exists in four languages (English, French, German with
+  "du", Spanish with "usted"): action messages, widget texts, feature names,
+  manifest texts, and `docs/{en,fr,de,es}.md` with the same sections, kept in
+  sync. `test/i18n.test.js` enforces it.
 - **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
   in English. Tests never touch the network.
 
@@ -146,6 +158,27 @@ code de ce dépôt. Compléter ce fichier quand un nouveau piège est découvert
 - Une intégration `device` ne reçoit pas la langue de l'utilisateur, une action de scène non
   plus (un widget, si) : prévoir un champ de config `language` si des textes partent du
   conteneur. Le superviseur injecte `TZ`, le fuseau de Gladys. La sandbox est limitée à 256 Mo.
+
+**Musique et notifications** (relevé sur gladys-volumio, cœur 5.2.1)
+
+- La boîte **Musique** du tableau de bord ne propose que les appareils qui ont `music/play`, et lit
+  `music/playback_state` sans garde : publier les deux. `PLAYING` = 1, `PAUSED` = 0, pas d'état
+  « arrêté ». Aucun couple pour la sourdine, l'aléatoire, la répétition ni le titre.
+- `music/play_notification` reçoit une **chaîne** (l'URL du MP3 de synthèse vocale de Gladys Plus pour
+  l'action de scène « diffuser une notification »), et le cœur n'enregistre pas d'état pour elle.
+- **Le volume de cette action de scène n'arrive jamais** à une intégration externe :
+  `registerProxyService.setValue(device, deviceFeature, value)` perd l'argument `options`
+  (`{ volume }`) que Sonos et Google Cast reçoivent. Prévoir un volume de notification en config.
+- L'ack de `setValue` est attendu 5 s : jouer le son, attendre sa fin puis restaurer la musique se
+  fait en tâche de fond, pas dans le handler.
+
+**Découverte médiée mDNS** (relevé sur gladys-volumio, cœur 5.2.1)
+
+- Le validateur du manifeste exige `^_[a-z0-9-]+\._(tcp|udp)$` : **minuscules** seulement. Et
+  `scanMdns` compare le nom des réponses à la casse demandée (`serviceNames.includes(record.name)`,
+  `endsWith`) : un service annoncé avec des majuscules (Volumio : `_Volumio._tcp`) risque de n'être
+  jamais trouvé. Toujours garder la saisie d'une adresse, et une autre voie si l'appareil en a une
+  (les « zones » de Volumio).
 
 **Formulaires de configuration et actions**
 
@@ -233,3 +266,29 @@ long, et sur un « Sie »/« Ihr… » de politesse en allemand. Le store exige 
 - Docs `en`, `fr`, `de`, `es` avec les mêmes sections.
 - Chauffe, ouverture, sécurité : ne rien rendre pilotable « comme un thermostat » ou par un assistant
   vocal quand une erreur serait dangereuse (leçon d'OctoPrint).
+
+## Volumio : l'API et ses pièges
+
+Lus dans `volumio/docs` et le code de `volumio/volumio3-backend` (GPL-3.0 : lu, jamais copié), et
+vérifiés contre de vrais serveurs socket.io 2.5 et 4.8. **Aucun lecteur réel n'a été testé.**
+
+- REST sur le **port 3000** (le 80 n'y renvoie que sur les images Volumio) : `getSystemInfo` (`id` =
+  UUID, l'identité de l'appareil), `getState`, `getQueue`, `listplaylists`, `browse?uri=`,
+  `getzones`, `commands/?cmd=`, `POST replaceAndPlay`, `POST addToQueue`. Pas de compte.
+- Une erreur revient en **HTTP 200** avec `{ "error": … }` ou `{ "Error": … }`. `playplaylist`
+  d'une playlist inconnue répond « Success » : vérifier le nom dans `listplaylists` avant.
+- Dans `getState`, `stream` vaut le **type de piste** (« flac » est vrai) : une webradio se reconnaît à
+  `trackType`/`service` `webradio`. `seek` est en **millisecondes**, la commande `seek` en
+  **secondes**. Une webradio se met en pause par `stop` (comme Home Assistant).
+- `replaceAndPlay` **vide la file** : pour reprendre après une notification, garder `getState` et
+  `getQueue` avant (la file nomme le titre `name`, `replaceAndPlay` lit `title`), rejouer
+  `{ list, index }` puis `seek` ; une file en pause revient par `clearQueue` + `addToQueue`, sans
+  jouer (et repart du premier morceau). Couper la répétition pendant le son, sinon il boucle.
+- `getzones` donne les autres lecteurs (`host` = `http://<ip>`, sans port) : une adresse saisie suffit
+  à trouver les autres.
+- Push : socket.io 2 (Engine.IO 3) sur Volumio 3, `getState` → `pushState`. Un serveur socket.io 2
+  **accepte aussi `EIO=4`**, puis coupe faute des pings que le client devrait envoyer : essayer 3,
+  puis 4 si refusé, et garder la version qui a tenu. Le client parle le protocole sur le WebSocket
+  intégré de Node 22 (pas de dépendance `socket.io-client`).
+- Pochettes : `albumart` relatif au lecteur ou absolu (Internet). Sans bibliothèque d'image dans le
+  conteneur, une pochette de plus de 300 Ko n'est pas affichée.

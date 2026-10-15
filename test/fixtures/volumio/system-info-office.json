@@ -1,0 +1,19 @@
+{
+  "id": "c4a8e2f0-7b19-4d3e-8f56-91ab02cd34ef",
+  "host": "http://192.0.2.41",
+  "name": "Bureau",
+  "type": "device",
+  "serviceName": "Volumio",
+  "state": {
+    "status": "stop",
+    "volume": 20,
+    "mute": false,
+    "artist": "",
+    "track": "",
+    "albumart": "http://192.0.2.41/albumart"
+  },
+  "systemversion": "3.661",
+  "builddate": "Tue Mar 12 16:40:02 CET 2024",
+  "variant": "volumio",
+  "hardware": "primo"
+}

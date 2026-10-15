@@ -1,0 +1,9 @@
+[
+  {
+    "name": "Salon._Volumio._tcp.local",
+    "host": "salon.local",
+    "addresses": ["fe80::ba27:ebff:fe00:1", "192.0.2.40"],
+    "port": 3000,
+    "txt": ["volumioName=Salon", "UUID=5b0e1c6a-3f2d-4e8b-9a71-2c4d6e8f0a13"]
+  }
+]
