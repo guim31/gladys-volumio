@@ -1,0 +1,26 @@
+{
+  "navigation": {
+    "lists": [
+      {
+        "availableListViews": ["list"],
+        "items": [
+          {
+            "service": "webradio",
+            "type": "webradio",
+            "title": "Radio Exemple Jazz",
+            "uri": "https://stream.example.org/jazz.mp3",
+            "albumart": "https://radio.example.org/logo.png"
+          },
+          {
+            "service": "webradio",
+            "type": "webradio",
+            "title": "Radio Exemple Info",
+            "uri": "http://stream.example.org/info.aac",
+            "icon": "fa fa-microphone"
+          }
+        ]
+      }
+    ],
+    "prev": { "uri": "radio" }
+  }
+}

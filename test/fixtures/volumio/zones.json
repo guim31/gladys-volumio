@@ -1,0 +1,36 @@
+{
+  "zones": [
+    {
+      "id": "5b0e1c6a-3f2d-4e8b-9a71-2c4d6e8f0a13",
+      "host": "http://192.0.2.40",
+      "name": "Salon",
+      "isSelf": true,
+      "type": "device",
+      "volumeAvailable": true,
+      "state": {
+        "status": "play",
+        "volume": 35,
+        "mute": false,
+        "artist": "Nina Simone",
+        "track": "Feeling Good",
+        "albumart": "http://192.0.2.40/albumart?cacheid=12"
+      }
+    },
+    {
+      "id": "c4a8e2f0-7b19-4d3e-8f56-91ab02cd34ef",
+      "host": "http://192.0.2.41",
+      "name": "Bureau",
+      "isSelf": false,
+      "type": "device",
+      "volumeAvailable": true,
+      "state": {
+        "status": "stop",
+        "volume": 20,
+        "mute": false,
+        "artist": "",
+        "track": "",
+        "albumart": "http://192.0.2.41/albumart"
+      }
+    }
+  ]
+}

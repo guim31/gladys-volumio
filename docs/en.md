@@ -1,61 +1,141 @@
-# Demo Devices Template
+# Volumio
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+## Overview
 
-## What you get
+This integration brings your **Volumio** network music players into Gladys: a Raspberry Pi with Volumio
+plugged into an amplifier or a DAC, a Volumio Primo, Rivo or Motivo. Each player becomes a Gladys music
+device: play, pause, previous and next track, volume, playback state, and "Broadcast a notification" for the
+text to speech and the sounds of your scenes. A dashboard widget shows what is playing, with its cover, and
+scene actions play a Volumio playlist, a favourite web radio or any stream address.
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+Everything stays on your local network: the integration talks to the Volumio REST API and listens to the
+real-time updates Volumio sends to its own web interface. No account, no cloud.
+
+> Developed without the hardware: feedback welcome. This integration was written from the Volumio
+> documentation and source code, without a real player at hand. Tell us how it works for you in the
+> [issues](https://github.com/guim31/gladys-volumio/issues).
+
+This integration is not affiliated with Volumio.
+
+## Requirements
+
+- Gladys Assistant **5.2.0** or later.
+- A Volumio player (Volumio 2 or 3) on the same local network as Gladys, reachable on its port 3000
+  (the default one).
 
 ## Configuration
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+1. Install the integration from **Integrations → Install from GitHub**.
+2. Open the **Discovery** tab: the players found appear there. Add the ones you want with **Add to Gladys**.
+3. If no player shows up, open the **Configuration** tab and enter the IP address of one player in
+   **Player addresses** (shown in Volumio under Settings, Network). The other players are then found through
+   it: Volumio players know each other.
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+Settings:
 
-## Actions
+| Setting                       | What it does                                                                                                |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Player addresses              | Optional IP addresses or host names, separated by commas. Port 3000 is used when none is given.             |
+| Real-time updates             | On by default: the integration listens to the changes Volumio announces. Off: it reads the players instead. |
+| Notification volume (%)       | Volume of the notifications played by Gladys. 0 keeps the current volume.                                   |
+| Notification length limit (s) | A notification longer than this is stopped and the music resumes (60 s by default).                         |
+| Language of the feature names | Names given to the features of new devices, and language of the scene action messages (French by default).  |
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+Two buttons help: **Search for players** searches again and lists every player with its state, and
+**List playlists and favourite radios** shows the exact names to type in the scene actions.
 
-## Scenes
+## Devices
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+Each Volumio player is one device, named as in Volumio, with these features:
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+| Feature                  | Type                    | What it does                                                        |
+| ------------------------ | ----------------------- | ------------------------------------------------------------------- |
+| Volume                   | music volume, 0 to 100  | Reads and sets the volume of the player.                            |
+| Play                     | music play button       | Plays the queue.                                                    |
+| Pause                    | music pause button      | Pauses. A web radio is stopped instead (a stream cannot be paused). |
+| Previous track           | music previous button   | Previous track of the queue.                                        |
+| Next track               | music next button       | Next track of the queue.                                            |
+| Playback state           | music playback state    | 1 while playing, 0 when paused or stopped. Kept in the history.     |
+| Broadcast a notification | music play notification | Plays a sound or a spoken message, then resumes what was playing.   |
 
-## Dashboard
+With these features, the player works with the **Music** box of the Gladys dashboard, and with the Gladys
+scene action that speaks a text on a speaker. A notification remembers the queue, the track, the position,
+the volume and the repeat mode, plays the sound at the notification volume, then puts everything back.
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+The features are named in the language chosen in the configuration, when the device is added.
+
+## Dashboard widget
+
+The **Volumio now playing** widget shows the title, the artist and the album, the cover when Volumio serves
+one Gladys accepts, the player, its state, the source (music library, web radio, Spotify, AirPlay...), the
+volume, shuffle and repeat. Choose the player in the widget settings, or leave it empty for the first player
+added.
+
+Its buttons:
+
+- **Play** / **Pause**;
+- **Next**;
+- **Volume**: a small form to type the volume and mute or unmute the player;
+- **Playlist**: a list of the Volumio playlists, to start one. Without any playlist, or when Volumio does not
+  control the volume, a **Previous** button takes the free place.
+
+## Scene trigger
+
+**A new track is playing**: a player started a track with another title or artist, including a new song on
+a web radio that announces it. You can pick the player. Variables: title, artist, album and source, to send
+"Now playing" to your phone or show it on a screen. The notifications played by Gladys never fire it.
+
+## Scene actions
+
+| Action                     | What it does                                                                                                   |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Play a Volumio playlist    | Plays a playlist saved in Volumio, by its name (case and accents do not matter).                               |
+| Play a favourite web radio | Plays a radio of the Volumio favourites (Favourite radios or My web radios), by its name.                      |
+| Play an address            | Plays a stream or a sound file by its http(s) address, at a chosen volume, optionally resuming the music then. |
+| Set shuffle and repeat     | Turns the shuffle and the repeat of the queue on or off, or leaves them unchanged.                             |
+| Clear the queue            | Empties the queue of the player (the music stops).                                                             |
+
+A web radio found with the Radio Browser integration of Gladys can be played with **Play an address**.
+
+## Scene examples
+
+- **Wake up**: every weekday at 7:00, **Play a Volumio playlist** "Morning" in the bedroom, then raise the
+  volume step by step with the Volume feature.
+- **Doorbell**: when the doorbell rings, **Play an address** with the sound of a bell, at 70 %, with "Then
+  resume what was playing" checked; or have Gladys say "Someone is at the door" on the player.
+- **Leaving home**: when the last person leaves, control the player's **Pause** feature, or **Clear the
+  queue**.
+- **Now playing on the TV**: on **A new track is playing**, send a message with the title and the artist.
+
+## Real-time updates and polling
+
+Volumio has no account and no quota: everything goes over the local network. The integration listens to the
+socket.io channel of Volumio (the one of its web interface) and reads the player once every 5 minutes as a
+safety net. When that channel is not available, it reads the player every 10 seconds while it plays and every
+minute otherwise. A player that does not answer is tried again after 15 seconds, then every minute. Only the
+players added to Gladys are read. An unchanged value is sent again to Gladys every 6 hours.
 
 ## Troubleshooting
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+- **No player in the Discovery tab**: enter the IP address of one player in the configuration, then press
+  **Search for players**. The automatic discovery (mDNS) of Gladys 5.2 may not find Volumio, which announces
+  itself with capital letters the core does not match.
+- **"Salon: does not answer"**: the player is off, or its address changed. Check that
+  `http://<address>:3000/api/v1/getState` opens in a browser of the same network.
+- **A scene action says the playlist is not found**: press **List playlists and favourite radios** and copy
+  the name shown.
+- **The widget shows no cover**: Gladys only accepts covers of 300 KB at most; larger ones are not shown.
+- Set `LOG_LEVEL=debug` on the integration to see every read in its logs.
+
+## Limitations
+
+- Developed without the hardware: the real-time channel (socket.io), the notifications and the resume are
+  tested against a simulated player, not a real Volumio.
+- Gladys has no music feature for mute, shuffle, repeat or the title: they live in the widget and in the
+  scene actions.
+- Gladys 5.2 does not pass the volume of its "play a notification" scene action to external integrations: the
+  notification volume of the configuration applies.
+- After a notification, a queue that was paused comes back without playing, from its first track.
+- The notification sound is played by Volumio itself: it must reach the address (Gladys Plus for the text
+  to speech).
+- A queue of a streaming service (Spotify Connect, AirPlay) cannot be resumed after a notification.

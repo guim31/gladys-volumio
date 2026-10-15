@@ -1,0 +1,49 @@
+{
+  "queue": [
+    {
+      "uri": "mnt/INTERNAL/Nina Simone/I Put a Spell on You/01 - I Put a Spell on You.flac",
+      "service": "mpd",
+      "name": "I Put a Spell on You",
+      "artist": "Nina Simone",
+      "album": "I Put a Spell on You",
+      "type": "track",
+      "tracknumber": 1,
+      "albumart": "/albumart?cacheid=12&web=Nina%20Simone/I%20Put%20a%20Spell%20on%20You/extralarge&path=%2FINTERNAL%2FNina%20Simone&metadata=false",
+      "duration": 155,
+      "samplerate": "44.1 kHz",
+      "bitdepth": "16 bit",
+      "trackType": "flac",
+      "channels": 2
+    },
+    {
+      "uri": "mnt/INTERNAL/Nina Simone/I Put a Spell on You/02 - Feeling Good.flac",
+      "service": "mpd",
+      "name": "Feeling Good",
+      "artist": "Nina Simone",
+      "album": "I Put a Spell on You",
+      "type": "track",
+      "tracknumber": 2,
+      "albumart": "/albumart?cacheid=12&web=Nina%20Simone/I%20Put%20a%20Spell%20on%20You/extralarge&path=%2FINTERNAL%2FNina%20Simone&metadata=false",
+      "duration": 177,
+      "samplerate": "44.1 kHz",
+      "bitdepth": "16 bit",
+      "trackType": "flac",
+      "channels": 2
+    },
+    {
+      "uri": "mnt/INTERNAL/Nina Simone/I Put a Spell on You/03 - Ne me quitte pas.flac",
+      "service": "mpd",
+      "name": "Ne me quitte pas",
+      "artist": "Nina Simone",
+      "album": "I Put a Spell on You",
+      "type": "track",
+      "tracknumber": 3,
+      "albumart": "/albumart?cacheid=12&web=Nina%20Simone/I%20Put%20a%20Spell%20on%20You/extralarge&path=%2FINTERNAL%2FNina%20Simone&metadata=false",
+      "duration": 214,
+      "samplerate": "44.1 kHz",
+      "bitdepth": "16 bit",
+      "trackType": "flac",
+      "channels": 2
+    }
+  ]
+}

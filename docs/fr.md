@@ -1,67 +1,149 @@
-# Template de démonstration
+# Volumio
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+## Présentation
 
-## Ce que vous obtenez
+Cette intégration amène vos lecteurs réseau **Volumio** dans Gladys : un Raspberry Pi sous Volumio branché à
+un ampli ou à un DAC, un Volumio Primo, Rivo ou Motivo. Chaque lecteur devient un appareil musique de Gladys :
+lecture, pause, piste précédente et suivante, volume, état de la lecture, et « Diffuser une notification »
+pour la synthèse vocale et les sons de vos scènes. Un widget du tableau de bord montre ce qui joue, avec la
+pochette, et des actions de scène jouent une playlist Volumio, une webradio favorite ou n'importe quelle
+adresse de flux.
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+Tout reste sur votre réseau local : l'intégration parle à l'API REST de Volumio et écoute les mises à jour en
+temps réel que Volumio envoie à sa propre interface web. Pas de compte, pas de cloud.
+
+> Développée sans le matériel : vos retours sont les bienvenus. Cette intégration a été écrite à partir de la
+> documentation et du code source de Volumio, sans lecteur réel sous la main. Dites-nous comment elle marche
+> chez vous dans les [issues](https://github.com/guim31/gladys-volumio/issues).
+
+Cette intégration n'est pas affiliée à Volumio.
+
+## Prérequis
+
+- Gladys Assistant **5.2.0** ou plus récent.
+- Un lecteur Volumio (Volumio 2 ou 3) sur le même réseau local que Gladys, joignable sur son port 3000
+  (celui par défaut).
 
 ## Configuration
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+1. Installez l'intégration depuis **Intégrations → Installer depuis GitHub**.
+2. Ouvrez l'onglet **Découverte** : les lecteurs trouvés y apparaissent. Ajoutez ceux que vous voulez avec
+   **Ajouter à Gladys**.
+3. Si aucun lecteur n'apparaît, ouvrez l'onglet **Configuration** et saisissez l'adresse IP d'un lecteur dans
+   **Adresses des lecteurs** (affichée dans Volumio, Paramètres, Réseau). Les autres lecteurs sont alors
+   trouvés grâce à lui : les lecteurs Volumio se connaissent entre eux.
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+Réglages :
 
-## Actions
+| Réglage                              | Effet                                                                                                                      |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| Adresses des lecteurs                | Adresses IP ou noms d'hôte facultatifs, séparés par des virgules. Le port 3000 est utilisé si aucun n'est indiqué.         |
+| Mises à jour en temps réel           | Activé par défaut : l'intégration écoute les changements que Volumio annonce. Désactivé : elle interroge les lecteurs.     |
+| Volume des notifications (%)         | Volume des notifications diffusées par Gladys. 0 garde le volume actuel.                                                   |
+| Durée maximale des notifications (s) | Une notification plus longue est arrêtée et la musique reprend (60 s par défaut).                                          |
+| Langue des noms de fonctionnalités   | Noms donnés aux fonctionnalités des nouveaux appareils, et langue des messages des actions de scène (français par défaut). |
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+Deux boutons aident : **Rechercher les lecteurs** relance la recherche et liste chaque lecteur avec son état,
+et **Lister playlists et webradios favorites** affiche les noms exacts à saisir dans les actions de scène.
 
-## Scènes
+## Appareils
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+Chaque lecteur Volumio est un appareil, nommé comme dans Volumio, avec ces fonctionnalités :
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+| Fonctionnalité            | Type                          | Effet                                                                               |
+| ------------------------- | ----------------------------- | ----------------------------------------------------------------------------------- |
+| Volume                    | volume de la musique, 0 à 100 | Lit et règle le volume du lecteur.                                                  |
+| Lecture                   | bouton lecture musique        | Joue la file d'attente.                                                             |
+| Pause                     | bouton pause musique          | Met en pause. Une webradio est arrêtée à la place (un flux ne se met pas en pause). |
+| Piste précédente          | bouton précédent musique      | Piste précédente de la file d'attente.                                              |
+| Piste suivante            | bouton suivant musique        | Piste suivante de la file d'attente.                                                |
+| État de la lecture        | état de la lecture musique    | 1 pendant la lecture, 0 en pause ou à l'arrêt. Conservé dans l'historique.          |
+| Diffuser une notification | diffuser une notification     | Joue un son ou un message parlé, puis reprend ce qui jouait.                        |
 
-## Tableau de bord
+Grâce à ces fonctionnalités, le lecteur fonctionne avec la boîte **Musique** du tableau de bord de Gladys, et
+avec l'action de scène de Gladys qui prononce un texte sur une enceinte. Une notification mémorise la file
+d'attente, le morceau, la position, le volume et la répétition, joue le son au volume des notifications, puis
+remet tout en place.
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+Les fonctionnalités sont nommées dans la langue choisie dans la configuration, au moment de l'ajout de
+l'appareil.
+
+## Widget du tableau de bord
+
+Le widget **Volumio en cours** affiche le titre, l'artiste et l'album, la pochette quand Volumio en sert une
+que Gladys accepte, le lecteur, son état, la source (bibliothèque musicale, webradio, Spotify, AirPlay…), le
+volume, l'aléatoire et la répétition. Choisissez le lecteur dans les réglages du widget, ou laissez vide pour
+le premier lecteur ajouté.
+
+Ses boutons :
+
+- **Lecture** / **Pause** ;
+- **Suivant** ;
+- **Volume** : un petit formulaire pour saisir le volume et couper ou rétablir le son ;
+- **Playlist** : la liste des playlists Volumio, pour en lancer une. Sans playlist, ou quand Volumio ne pilote
+  pas le volume, un bouton **Précédent** prend la place libre.
+
+## Déclencheur de scène
+
+**Un nouveau morceau est joué** : un lecteur a commencé un morceau d'un autre titre ou artiste, y compris une
+nouvelle chanson sur une webradio qui l'annonce. Vous pouvez choisir le lecteur. Variables : titre, artiste,
+album et source, pour envoyer « En cours de lecture » sur votre téléphone ou l'afficher sur un écran. Les
+notifications diffusées par Gladys ne le déclenchent jamais.
+
+## Actions de scène
+
+| Action                         | Effet                                                                                                                |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Jouer une playlist Volumio     | Joue une playlist enregistrée dans Volumio, par son nom (majuscules et accents indifférents).                        |
+| Jouer une webradio favorite    | Joue une radio des favoris de Volumio (Radios favorites ou Mes webradios), par son nom.                              |
+| Jouer une adresse              | Joue un flux ou un fichier son par son adresse http(s), au volume choisi, en reprenant la musique ensuite en option. |
+| Régler aléatoire et répétition | Active ou désactive l'aléatoire et la répétition de la file d'attente, ou les laisse inchangés.                      |
+| Vider la file d'attente        | Vide la file d'attente du lecteur (la musique s'arrête).                                                             |
+
+Une webradio trouvée avec l'intégration Radio Browser de Gladys se joue avec **Jouer une adresse**.
+
+## Exemples de scènes
+
+- **Réveil** : chaque jour de semaine à 7 h, **Jouer une playlist Volumio** « Réveil » dans la chambre, puis
+  monter le volume par étapes avec la fonctionnalité Volume.
+- **Sonnette** : quand on sonne, **Jouer une adresse** avec un son de cloche, à 70 %, en cochant « Puis
+  reprendre ce qui jouait » ; ou faire dire à Gladys « Quelqu'un sonne à la porte » sur le lecteur.
+- **Départ de la maison** : quand la dernière personne part, commander la fonctionnalité **Pause** du lecteur,
+  ou **Vider la file d'attente**.
+- **En cours sur la télé** : sur **Un nouveau morceau est joué**, envoyer un message avec le titre et
+  l'artiste.
+
+## Temps réel et interrogation
+
+Volumio n'a ni compte ni quota : tout passe par le réseau local. L'intégration écoute le canal socket.io de
+Volumio (celui de son interface web) et lit le lecteur une fois toutes les 5 minutes par sécurité. Quand ce
+canal n'est pas disponible, elle lit le lecteur toutes les 10 secondes pendant la lecture et chaque minute
+sinon. Un lecteur qui ne répond pas est réessayé après 15 secondes, puis chaque minute. Seuls les lecteurs
+ajoutés à Gladys sont lus. Une valeur inchangée est renvoyée à Gladys toutes les 6 heures.
 
 ## Dépannage
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+- **Aucun lecteur dans l'onglet Découverte** : saisissez l'adresse IP d'un lecteur dans la configuration,
+  puis appuyez sur **Rechercher les lecteurs**. La découverte automatique (mDNS) de Gladys 5.2 peut ne pas
+  trouver Volumio, qui s'annonce avec des majuscules que le cœur ne reconnaît pas.
+- **« Salon : ne répond pas »** : le lecteur est éteint, ou son adresse a changé. Vérifiez que
+  `http://<adresse>:3000/api/v1/getState` s'ouvre dans un navigateur du même réseau.
+- **Une action de scène dit que la playlist est introuvable** : appuyez sur **Lister playlists et webradios
+  favorites** et copiez le nom affiché.
+- **Le widget n'affiche pas de pochette** : Gladys n'accepte que des pochettes de 300 Ko au plus ; les plus
+  grandes ne sont pas affichées.
+- Réglez `LOG_LEVEL=debug` sur l'intégration pour voir chaque lecture dans ses journaux.
+
+## Limites
+
+- Développée sans le matériel : le canal temps réel (socket.io), les notifications et la reprise sont testés
+  contre un lecteur simulé, pas un vrai Volumio.
+- Gladys n'a pas de fonctionnalité musique pour la sourdine, l'aléatoire, la répétition ou le titre : ils sont
+  dans le widget et les actions de scène.
+- Gladys 5.2 ne transmet pas aux intégrations externes le volume de son action de scène « diffuser une
+  notification » : c'est le volume des notifications de la configuration qui s'applique.
+- Après une notification, une file d'attente qui était en pause revient sans jouer, depuis son premier
+  morceau.
+- Le son de la notification est joué par Volumio lui-même : il doit pouvoir joindre l'adresse (Gladys Plus
+  pour la synthèse vocale).
+- Une file d'un service de streaming (Spotify Connect, AirPlay) ne peut pas reprendre après une notification.

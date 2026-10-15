@@ -1,93 +1,123 @@
+// -----------------------------------------------------------------------------
+// The scene actions, run through the fake Gladys as a scene would.
+// -----------------------------------------------------------------------------
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { createFakeGladys } from '@gladysassistant/integration-sdk/testing';
-import { DEVICE_BLUEPRINTS } from '../src/devices/index.js';
-import { MOTION_DETECTED_TRIGGER, motionSensor } from '../src/devices/motionSensor.js';
-import { SCENE_ACTIONS } from '../src/scenes.js';
-import { normalizeConfig } from '../src/config.js';
+import { optionalNumber } from '../src/scenes.js';
+import { FakeVolumio, createAll, createWorld, ids, settle } from './helpers/world.js';
 
-const manifest = JSON.parse(
-  await readFile(new URL('../gladys-assistant-integration.json', import.meta.url), 'utf8'),
-);
-const config = normalizeConfig();
+async function world(t, options) {
+  const w = await createWorld(options);
+  t.after(() => w.app.stop());
+  await createAll(w);
+  const [player] = w.players;
+  const run = async (key, fields) => {
+    const ack = await w.fake.sceneAction(key, { device: ids(w.gladys, player).device, ...fields });
+    await settle();
+    return ack;
+  };
+  return { ...w, player, run };
+}
 
-const declarationOf = (list, key) => manifest[list].find((entry) => entry.key === key);
-const keysOf = (list) => (list ?? []).map((entry) => entry.key);
-const deviceIdOf = (gladys, key) =>
-  DEVICE_BLUEPRINTS.find((bp) => bp.key === key).deviceExternalId(gladys);
+const lastPost = (player) =>
+  player.requests.filter((request) => request.path === '/api/v1/replaceAndPlay').at(-1)?.body;
 
-// Let the async interval callback run to completion.
-const flush = () => new Promise((resolve) => setImmediate(resolve));
-
-test('the motion sensor fires one motion_detected event per detection, none on the clear', async (t) => {
-  t.mock.timers.enable({ apis: ['setInterval', 'setTimeout'] });
-  const gladys = createFakeGladys();
-  const stopPush = motionSensor.startPush(gladys, config);
-  try {
-    t.mock.timers.tick(60_000);
-    await flush();
-    assert.equal(gladys.fake.sceneEvents.length, 1, 'one detection, one event');
-    assert.equal(gladys.fake.sceneEvents[0].key, MOTION_DETECTED_TRIGGER);
-    assert.equal(gladys.fake.states.at(-1).state, 1, 'the state is still published');
-
-    t.mock.timers.tick(10_000);
-    await flush();
-    assert.equal(gladys.fake.states.at(-1).state, 0, 'the detection is cleared');
-    assert.equal(gladys.fake.sceneEvents.length, 1, 'the clear fires no event');
-  } finally {
-    stopPush();
-  }
+test('play a playlist by its name, whatever the case and the accents', async (t) => {
+  const { player, run } = await world(t);
+  const ack = await run('play_playlist', { playlist: ' diner ' });
+  assert.equal(ack.success, true, ack.error);
+  assert.deepEqual(player.commands.at(-1), 'playplaylist Dîner');
 });
 
-test('motion_detected data only carries keys the trigger declares', async (t) => {
-  t.mock.timers.enable({ apis: ['setInterval', 'setTimeout'] });
-  const gladys = createFakeGladys();
-  const stopPush = motionSensor.startPush(gladys, config);
-  try {
-    t.mock.timers.tick(60_000);
-    await flush();
-  } finally {
-    stopPush();
-  }
-  const [{ data }] = gladys.fake.sceneEvents;
-  const trigger = declarationOf('scene_triggers', MOTION_DETECTED_TRIGGER);
-  // The core keeps the `fields` keys (filters) and the `variables` keys
-  // (exposed to the scene): any other key would be silently dropped.
-  const declared = [...keysOf(trigger.fields), ...keysOf(trigger.variables)];
-  for (const [key, value] of Object.entries(data)) {
-    assert.ok(declared.includes(key), `data.${key} is not declared, the core would drop it`);
-    assert.ok(value === null || typeof value !== 'object', `data.${key} must be a primitive`);
-  }
-  // A `"source": "devices"` filter stores a device external_id.
-  assert.equal(data.device, deviceIdOf(gladys, 'motion-sensor'));
-  const targets = trigger.fields.find((field) => field.key === 'target').options;
-  assert.ok(
-    targets.some((option) => option.value === data.target),
-    `data.target "${data.target}" must be one of the filter options`,
-  );
-});
-
-test('identify_device signals the chosen device and returns the declared outputs', async () => {
-  const gladys = createFakeGladys();
-  const outputs = await SCENE_ACTIONS.identify_device(gladys, {
-    fields: { device: deviceIdOf(gladys, 'light') },
-    config,
+test('an unknown playlist fails with its name, in the configured language', async (t) => {
+  const { player, run } = await world(t, {
+    config: { hosts: '192.0.2.40', language: 'fr' },
   });
-  assert.deepEqual(outputs, { signalled: true });
-  const declared = keysOf(declarationOf('scene_actions', 'identify_device').outputs);
-  for (const key of Object.keys(outputs)) {
-    assert.ok(declared.includes(key), `output "${key}" is not declared, the core would drop it`);
-  }
+  const ack = await run('play_playlist', { playlist: 'Jazz' });
+  assert.equal(ack.success, false);
+  assert.equal(ack.error, 'Playlist « Jazz » introuvable sur Salon.');
+  assert.equal(player.commands.length, 0, 'Volumio would say "Success" anyway');
 });
 
-test('identify_device reports a device that cannot signal itself through its output', async () => {
-  // Not a failure: a scene action is never a condition, the scene author
-  // gates the following actions on the output instead.
-  const gladys = createFakeGladys();
-  const outputs = await SCENE_ACTIONS.identify_device(gladys, {
-    fields: { device: deviceIdOf(gladys, 'weather-station') },
-    config,
+test('play a favourite web radio, from Favourites or My web radios', async (t) => {
+  const { player, run } = await world(t);
+  let ack = await run('play_favorite_radio', { radio: 'radio exemple info' });
+  assert.equal(ack.success, true, ack.error);
+  assert.equal(lastPost(player).uri, 'http://stream.example.org/info.aac');
+  ack = await run('play_favorite_radio', { radio: 'Radio du quartier' });
+  assert.equal(ack.success, true, ack.error);
+  assert.equal(lastPost(player).type, 'mywebradio');
+  ack = await run('play_favorite_radio', { radio: 'Nope FM' });
+  assert.equal(ack.success, false);
+  assert.match(ack.error, /Nope FM/);
+});
+
+test('play an address, at a volume, without resuming', async (t) => {
+  const { player, run } = await world(t);
+  const ack = await run('play_url', {
+    url: 'https://stream.example.org/live.mp3',
+    title: 'Radio Browser',
+    volume: '25',
+    resume: false,
   });
-  assert.deepEqual(outputs, { signalled: false });
+  assert.equal(ack.success, true, ack.error);
+  assert.deepEqual(lastPost(player), {
+    service: 'webradio',
+    type: 'webradio',
+    title: 'Radio Browser',
+    uri: 'https://stream.example.org/live.mp3',
+  });
+  assert.equal(player.state.volume, 25);
+  assert.equal(player.queue.length, 1);
+});
+
+test('play an address as a notification: resolved once it plays, the music comes back', async (t) => {
+  const { player, hub, run } = await world(t);
+  const ack = await run('play_url', { url: 'http://192.0.2.9/ding.mp3', resume: true });
+  assert.equal(ack.success, true, ack.error);
+  const record = hub.records.get(player.id);
+  while (record.notifying) {
+    await record.notifying.catch(() => {});
+  }
+  assert.equal(player.state.title, 'Feeling Good');
+});
+
+test('a wrong address is refused before anything plays', async (t) => {
+  const { player, run } = await world(t);
+  const ack = await run('play_url', { url: 'stream.example.org/live.mp3' });
+  assert.equal(ack.success, false);
+  assert.equal(ack.error, 'The address must start with http:// or https://.');
+  assert.equal(lastPost(player), undefined);
+});
+
+test('shuffle and repeat: on, off or unchanged', async (t) => {
+  const { player, run } = await world(t);
+  await run('set_play_mode', { shuffle: 'on', repeat: 'unchanged' });
+  assert.deepEqual(player.commands, ['random true']);
+  await run('set_play_mode', { shuffle: 'off', repeat: 'on' });
+  assert.deepEqual(player.commands, ['random true', 'random false', 'repeat true']);
+});
+
+test('clear the queue', async (t) => {
+  const { player, run } = await world(t);
+  const ack = await run('clear_queue', {});
+  assert.equal(ack.success, true, ack.error);
+  assert.equal(player.queue.length, 0);
+});
+
+test('a device that is not a Volumio player is refused', async (t) => {
+  const w = await createWorld({ players: [new FakeVolumio()] });
+  t.after(() => w.app.stop());
+  const ack = await w.fake.sceneAction('clear_queue', { device: 'ext:test-integration:other:1' });
+  assert.equal(ack.success, false);
+  assert.equal(ack.error, 'This device is not a known Volumio player.');
+});
+
+test('a volume typed in a scene', () => {
+  assert.equal(optionalNumber(''), null);
+  assert.equal(optionalNumber(undefined), null);
+  assert.equal(optionalNumber('33,6'), 34);
+  assert.equal(optionalNumber(250), 100);
+  assert.equal(optionalNumber('loud'), null);
 });

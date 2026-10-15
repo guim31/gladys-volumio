@@ -1,0 +1,19 @@
+{
+  "id": "0e9d7c5b-1a2f-4c6e-b8d0-3f5a7c9e1b2d",
+  "host": "http://192.0.2.42",
+  "name": "Cuisine",
+  "type": "device",
+  "serviceName": "Volumio",
+  "state": {
+    "status": "pause",
+    "volume": 50,
+    "mute": false,
+    "artist": "",
+    "track": "",
+    "albumart": "http://192.0.2.42/albumart"
+  },
+  "systemversion": "2.882",
+  "builddate": "Fri Mar 26 09:14:51 CET 2021",
+  "variant": "volumio",
+  "hardware": "pi"
+}

@@ -1,177 +1,651 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "Volumio",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "Volumio network music players: playback, volume, notifications, playlists, web radios.",
+    "fr": "Lecteurs réseau Volumio : lecture, volume, notifications, playlists, webradios.",
+    "de": "Volumio-Netzwerkplayer: Wiedergabe, Lautstärke, Benachrichtigungen, Playlists, Webradios.",
+    "es": "Reproductores de red Volumio: reproducción, volumen, notificaciones, listas, radios web."
   },
   "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
-  "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "docker_image": "ghcr.io/guim31/gladys-volumio:1.0.0",
+  "gladys_version": ">=5.2.0",
+  "cover_image": "https://raw.githubusercontent.com/guim31/gladys-volumio/main/cover.png",
+  "categories": ["multimedia"],
+  "transports": ["local"],
+  "network_discovery": [
+    {
+      "type": "mdns",
+      "service": "_volumio._tcp"
+    }
+  ],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "Finding your players",
+        "fr": "Trouver vos lecteurs",
+        "de": "Deine Player finden",
+        "es": "Encontrar sus reproductores"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "Volumio players are searched for automatically: open the Discovery tab. If none shows up, enter the IP address of one player below (shown in Volumio, under Settings, Network): the others are found through it.",
+        "fr": "Les lecteurs Volumio sont recherchés automatiquement : ouvrez l'onglet Découverte. Si aucun n'apparaît, saisissez ci-dessous l'adresse IP d'un lecteur (affichée dans Volumio, Paramètres, Réseau) : les autres sont trouvés grâce à lui.",
+        "de": "Volumio-Player werden automatisch gesucht: Öffne den Tab „Entdecken“. Erscheint keiner, gib unten die IP-Adresse eines Players ein (in Volumio unter Einstellungen, Netzwerk): Die anderen werden über ihn gefunden.",
+        "es": "Los reproductores Volumio se buscan automáticamente: abra la pestaña Descubrir. Si no aparece ninguno, introduzca a continuación la dirección IP de un reproductor (en Volumio, Ajustes, Red): los demás se encuentran a través de él."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://github.com/guim31/gladys-volumio/blob/main/docs/en.md",
+          "label": {
+            "en": "Setup guide",
+            "fr": "Guide d'installation",
+            "de": "Installationsanleitung",
+            "es": "Guía de instalación"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "hosts",
+      "type": "string",
+      "label": {
+        "en": "Player addresses",
+        "fr": "Adresses des lecteurs",
+        "de": "Adressen der Player",
+        "es": "Direcciones de los reproductores"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
-      "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "description": {
+        "en": "Optional, separated by commas. Port 3000 is used when none is given.",
+        "fr": "Facultatif, séparées par des virgules. Le port 3000 est utilisé si aucun n’est indiqué.",
+        "de": "Optional, durch Kommas getrennt. Ohne Angabe wird Port 3000 verwendet.",
+        "es": "Opcional, separadas por comas. Se usa el puerto 3000 si no se indica ninguno."
+      },
+      "placeholder": {
+        "en": "e.g. 192.168.1.40, 192.168.1.41",
+        "fr": "ex. 192.168.1.40, 192.168.1.41",
+        "de": "z. B. 192.168.1.40, 192.168.1.41",
+        "es": "p. ej. 192.168.1.40, 192.168.1.41"
+      },
+      "required": false,
+      "default": ""
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+      "key": "realtime",
+      "type": "boolean",
+      "label": {
+        "en": "Real-time updates",
+        "fr": "Mises à jour en temps réel",
+        "de": "Echtzeit-Aktualisierung",
+        "es": "Actualizaciones en tiempo real"
       },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
+      "description": {
+        "en": "Listen to the changes Volumio announces, like its web interface does. Off: the players are read every 10 s while playing, every minute otherwise.",
+        "fr": "Écouter les changements que Volumio annonce, comme son interface web. Désactivé : les lecteurs sont lus toutes les 10 s pendant la lecture, chaque minute sinon.",
+        "de": "Auf die Änderungen hören, die Volumio meldet, wie seine Weboberfläche. Aus: Die Player werden während der Wiedergabe alle 10 s gelesen, sonst jede Minute.",
+        "es": "Escuchar los cambios que anuncia Volumio, como su interfaz web. Desactivado: los reproductores se leen cada 10 s durante la reproducción y cada minuto en los demás casos."
+      },
+      "required": false,
+      "default": true
     },
     {
-      "key": "unit",
+      "key": "notification_volume",
+      "type": "number",
+      "label": {
+        "en": "Notification volume (%)",
+        "fr": "Volume des notifications (%)",
+        "de": "Lautstärke der Benachrichtigungen (%)",
+        "es": "Volumen de las notificaciones (%)"
+      },
+      "description": {
+        "en": "Volume of the notifications played by Gladys (text to speech, sounds), then the volume goes back. 0: keep the current volume.",
+        "fr": "Volume des notifications diffusées par Gladys (synthèse vocale, sons), puis le volume revient. 0 : garder le volume actuel.",
+        "de": "Lautstärke der von Gladys abgespielten Benachrichtigungen (Sprachausgabe, Töne), danach kehrt die Lautstärke zurück. 0: aktuelle Lautstärke behalten.",
+        "es": "Volumen de las notificaciones que reproduce Gladys (síntesis de voz, sonidos); después el volumen vuelve. 0: mantener el volumen actual."
+      },
+      "required": false,
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    {
+      "key": "notification_max_seconds",
+      "type": "number",
+      "label": {
+        "en": "Notification length limit (s)",
+        "fr": "Durée maximale des notifications (s)",
+        "de": "Maximale Dauer der Benachrichtigungen (s)",
+        "es": "Duración máxima de las notificaciones (s)"
+      },
+      "description": {
+        "en": "A notification longer than this is stopped and the music resumes (a stream never ends on its own).",
+        "fr": "Une notification plus longue est arrêtée et la musique reprend (un flux ne se termine jamais de lui-même).",
+        "de": "Eine längere Benachrichtigung wird gestoppt und die Musik geht weiter (ein Stream endet nie von selbst).",
+        "es": "Una notificación más larga se detiene y la música se reanuda (un flujo nunca termina por sí solo)."
+      },
+      "required": false,
+      "default": 60,
+      "min": 10,
+      "max": 600
+    },
+    {
+      "key": "language",
       "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
-      "required": false,
-      "default": "celsius",
-      "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
-      ]
-    },
-    {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "label": {
+        "en": "Language of the feature names",
+        "fr": "Langue des noms de fonctionnalités",
+        "de": "Sprache der Funktionsnamen",
+        "es": "Idioma de los nombres de las funciones"
+      },
       "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+        "en": "Names given to the features of new devices, and language of the messages of the scene actions.",
+        "fr": "Noms donnés aux fonctionnalités des nouveaux appareils, et langue des messages des actions de scène.",
+        "de": "Namen der Funktionen neuer Geräte und Sprache der Meldungen der Szenenaktionen.",
+        "es": "Nombres de las funciones de los nuevos dispositivos e idioma de los mensajes de las acciones de escena."
       },
       "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "default": "fr",
+      "options": [
+        {
+          "value": "en",
+          "label": {
+            "en": "English",
+            "fr": "Anglais",
+            "de": "Englisch",
+            "es": "Inglés"
+          }
+        },
+        {
+          "value": "fr",
+          "label": {
+            "en": "French",
+            "fr": "Français",
+            "de": "Französisch",
+            "es": "Francés"
+          }
+        },
+        {
+          "value": "de",
+          "label": {
+            "en": "German",
+            "fr": "Allemand",
+            "de": "Deutsch",
+            "es": "Alemán"
+          }
+        },
+        {
+          "value": "es",
+          "label": {
+            "en": "Spanish",
+            "fr": "Espagnol",
+            "de": "Spanisch",
+            "es": "Español"
+          }
+        }
+      ]
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
-      "timeout_seconds": 30
+      "key": "search",
+      "label": {
+        "en": "Search for players",
+        "fr": "Rechercher les lecteurs",
+        "de": "Player suchen",
+        "es": "Buscar reproductores"
+      },
+      "timeout_seconds": 60
     },
     {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
+      "key": "list_media",
+      "label": {
+        "en": "List playlists and favourite radios",
+        "fr": "Lister playlists et webradios favorites",
+        "de": "Playlists und Lieblings-Webradios anzeigen",
+        "es": "Ver listas y radios web favoritas"
+      },
+      "timeout_seconds": 60
     }
   ],
   "scene_triggers": [
     {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
+      "key": "track_changed",
+      "label": {
+        "en": "A new track is playing",
+        "fr": "Un nouveau morceau est joué",
+        "de": "Ein neuer Titel läuft",
+        "es": "Suena una nueva pista"
+      },
       "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+        "en": "A Volumio player started a track with another title or artist (also a new song on a web radio that announces it).",
+        "fr": "Un lecteur Volumio a commencé un morceau d'un autre titre ou artiste (aussi une nouvelle chanson sur une webradio qui l'annonce).",
+        "de": "Ein Volumio-Player hat einen Titel mit anderem Namen oder Interpreten begonnen (auch ein neues Lied auf einem Webradio, das es meldet).",
+        "es": "Un reproductor Volumio ha empezado una pista con otro título o artista (también una nueva canción en una radio web que la anuncia)."
       },
       "fields": [
         {
           "key": "device",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
-        },
-        {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
-          ]
+          "label": {
+            "en": "Player",
+            "fr": "Lecteur",
+            "de": "Player",
+            "es": "Reproductor"
+          },
+          "required": false
         }
       ],
       "variables": [
         {
-          "key": "target",
+          "key": "title",
           "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
+          "label": {
+            "en": "Title",
+            "fr": "Titre",
+            "de": "Titel",
+            "es": "Título"
+          }
+        },
+        {
+          "key": "artist",
+          "type": "string",
+          "label": {
+            "en": "Artist",
+            "fr": "Artiste",
+            "de": "Interpret",
+            "es": "Artista"
+          }
+        },
+        {
+          "key": "album",
+          "type": "string",
+          "label": {
+            "en": "Album",
+            "fr": "Album",
+            "de": "Album",
+            "es": "Álbum"
+          }
+        },
+        {
+          "key": "source",
+          "type": "string",
+          "label": {
+            "en": "Source",
+            "fr": "Source",
+            "de": "Quelle",
+            "es": "Fuente"
+          }
         }
       ]
     }
   ],
   "scene_actions": [
     {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+      "key": "play_playlist",
+      "label": {
+        "en": "Play a Volumio playlist",
+        "fr": "Jouer une playlist Volumio",
+        "de": "Volumio-Playlist abspielen",
+        "es": "Reproducir una lista de Volumio"
       },
-      "timeout_seconds": 15,
+      "description": {
+        "en": "Play a playlist saved in Volumio, by its name. The \"List playlists and favourite radios\" button of the configuration shows the names.",
+        "fr": "Joue une playlist enregistrée dans Volumio, par son nom. Le bouton « Lister playlists et webradios favorites » de la configuration affiche les noms.",
+        "de": "Spielt eine in Volumio gespeicherte Playlist anhand ihres Namens ab. Die Schaltfläche „Playlists und Lieblings-Webradios anzeigen“ der Konfiguration zeigt die Namen.",
+        "es": "Reproduce una lista guardada en Volumio, por su nombre. El botón «Ver listas y radios web favoritas» de la configuración muestra los nombres."
+      },
+      "timeout_seconds": 30,
       "fields": [
         {
           "key": "device",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
+          "label": {
+            "en": "Player",
+            "fr": "Lecteur",
+            "de": "Player",
+            "es": "Reproductor"
+          },
+          "required": true
+        },
+        {
+          "key": "playlist",
+          "type": "string",
+          "label": {
+            "en": "Playlist name",
+            "fr": "Nom de la playlist",
+            "de": "Name der Playlist",
+            "es": "Nombre de la lista"
+          },
+          "placeholder": {
+            "en": "e.g. Morning",
+            "fr": "ex. Réveil",
+            "de": "z. B. Morgen",
+            "es": "p. ej. Mañana"
+          },
           "required": true
         }
-      ],
-      "outputs": [
+      ]
+    },
+    {
+      "key": "play_favorite_radio",
+      "label": {
+        "en": "Play a favourite web radio",
+        "fr": "Jouer une webradio favorite",
+        "de": "Lieblings-Webradio abspielen",
+        "es": "Reproducir una radio web favorita"
+      },
+      "description": {
+        "en": "Play a web radio of the Volumio favourites (Favourite radios or My web radios), by its name.",
+        "fr": "Joue une webradio des favoris de Volumio (Radios favorites ou Mes webradios), par son nom.",
+        "de": "Spielt ein Webradio aus den Volumio-Favoriten (Lieblingsradios oder Meine Webradios) anhand seines Namens ab.",
+        "es": "Reproduce una radio web de los favoritos de Volumio (Radios favoritas o Mis radios web), por su nombre."
+      },
+      "timeout_seconds": 30,
+      "fields": [
         {
-          "key": "signalled",
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Player",
+            "fr": "Lecteur",
+            "de": "Player",
+            "es": "Reproductor"
+          },
+          "required": true
+        },
+        {
+          "key": "radio",
+          "type": "string",
+          "label": {
+            "en": "Web radio name",
+            "fr": "Nom de la webradio",
+            "de": "Name des Webradios",
+            "es": "Nombre de la radio web"
+          },
+          "placeholder": {
+            "en": "e.g. FIP",
+            "fr": "ex. FIP",
+            "de": "z. B. FIP",
+            "es": "p. ej. FIP"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "key": "play_url",
+      "label": {
+        "en": "Play an address",
+        "fr": "Jouer une adresse",
+        "de": "Adresse abspielen",
+        "es": "Reproducir una dirección"
+      },
+      "description": {
+        "en": "Play a stream or a sound file by its http(s) address (a web radio, a doorbell sound...). Optionally as a notification: what played before resumes afterwards.",
+        "fr": "Joue un flux ou un fichier son par son adresse http(s) (une webradio, un son de sonnette…). En option comme une notification : ce qui jouait reprend ensuite.",
+        "de": "Spielt einen Stream oder eine Tondatei über ihre http(s)-Adresse ab (ein Webradio, ein Klingelton…). Optional als Benachrichtigung: Was vorher lief, geht danach weiter.",
+        "es": "Reproduce un flujo o un archivo de sonido por su dirección http(s) (una radio web, un sonido de timbre…). Opcionalmente como notificación: lo que sonaba se reanuda después."
+      },
+      "timeout_seconds": 60,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Player",
+            "fr": "Lecteur",
+            "de": "Player",
+            "es": "Reproductor"
+          },
+          "required": true
+        },
+        {
+          "key": "url",
+          "type": "string",
+          "label": {
+            "en": "Address",
+            "fr": "Adresse",
+            "de": "Adresse",
+            "es": "Dirección"
+          },
+          "placeholder": {
+            "en": "https://…",
+            "fr": "https://…",
+            "de": "https://…",
+            "es": "https://…"
+          },
+          "required": true
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "label": {
+            "en": "Title shown",
+            "fr": "Titre affiché",
+            "de": "Angezeigter Titel",
+            "es": "Título mostrado"
+          },
+          "required": false
+        },
+        {
+          "key": "volume",
+          "type": "number",
+          "label": {
+            "en": "Volume (%)",
+            "fr": "Volume (%)",
+            "de": "Lautstärke (%)",
+            "es": "Volumen (%)"
+          },
+          "description": {
+            "en": "Empty: keep the current volume.",
+            "fr": "Vide : garder le volume actuel.",
+            "de": "Leer: aktuelle Lautstärke behalten.",
+            "es": "Vacío: mantener el volumen actual."
+          },
+          "required": false,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "key": "resume",
           "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
+          "label": {
+            "en": "Then resume what was playing",
+            "fr": "Puis reprendre ce qui jouait",
+            "de": "Danach fortsetzen, was lief",
+            "es": "Después reanudar lo que sonaba"
+          },
+          "required": false,
+          "default": false
+        }
+      ]
+    },
+    {
+      "key": "set_play_mode",
+      "label": {
+        "en": "Set shuffle and repeat",
+        "fr": "Régler aléatoire et répétition",
+        "de": "Zufall und Wiederholen einstellen",
+        "es": "Ajustar aleatorio y repetir"
+      },
+      "description": {
+        "en": "Turn the shuffle and the repeat of the queue on or off.",
+        "fr": "Active ou désactive la lecture aléatoire et la répétition de la file d'attente.",
+        "de": "Schaltet die Zufallswiedergabe und das Wiederholen der Warteschlange ein oder aus.",
+        "es": "Activa o desactiva la reproducción aleatoria y la repetición de la cola."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Player",
+            "fr": "Lecteur",
+            "de": "Player",
+            "es": "Reproductor"
+          },
+          "required": true
+        },
+        {
+          "key": "shuffle",
+          "type": "select",
+          "label": {
+            "en": "Shuffle",
+            "fr": "Aléatoire",
+            "de": "Zufallswiedergabe",
+            "es": "Aleatorio"
+          },
+          "required": false,
+          "default": "unchanged",
+          "options": [
+            {
+              "value": "unchanged",
+              "label": {
+                "en": "Unchanged",
+                "fr": "Inchangé",
+                "de": "Unverändert",
+                "es": "Sin cambios"
+              }
+            },
+            {
+              "value": "on",
+              "label": {
+                "en": "On",
+                "fr": "Activé",
+                "de": "An",
+                "es": "Activado"
+              }
+            },
+            {
+              "value": "off",
+              "label": {
+                "en": "Off",
+                "fr": "Désactivé",
+                "de": "Aus",
+                "es": "Desactivado"
+              }
+            }
+          ]
+        },
+        {
+          "key": "repeat",
+          "type": "select",
+          "label": {
+            "en": "Repeat",
+            "fr": "Répétition",
+            "de": "Wiederholen",
+            "es": "Repetir"
+          },
+          "required": false,
+          "default": "unchanged",
+          "options": [
+            {
+              "value": "unchanged",
+              "label": {
+                "en": "Unchanged",
+                "fr": "Inchangé",
+                "de": "Unverändert",
+                "es": "Sin cambios"
+              }
+            },
+            {
+              "value": "on",
+              "label": {
+                "en": "On",
+                "fr": "Activé",
+                "de": "An",
+                "es": "Activado"
+              }
+            },
+            {
+              "value": "off",
+              "label": {
+                "en": "Off",
+                "fr": "Désactivé",
+                "de": "Aus",
+                "es": "Desactivado"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "clear_queue",
+      "label": {
+        "en": "Clear the queue",
+        "fr": "Vider la file d'attente",
+        "de": "Warteschlange leeren",
+        "es": "Vaciar la cola"
+      },
+      "description": {
+        "en": "Empty the play queue of the player (the music stops).",
+        "fr": "Vide la file d'attente du lecteur (la musique s'arrête).",
+        "de": "Leert die Warteschlange des Players (die Musik stoppt).",
+        "es": "Vacía la cola de reproducción del reproductor (la música se detiene)."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Player",
+            "fr": "Lecteur",
+            "de": "Player",
+            "es": "Reproductor"
+          },
+          "required": true
         }
       ]
     }
   ],
   "widgets": [
     {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
+      "key": "now_playing",
+      "label": {
+        "en": "Volumio now playing",
+        "fr": "Volumio en cours",
+        "de": "Volumio läuft gerade",
+        "es": "Volumio en reproducción"
       },
-      "icon": "activity",
-      "action_timeout_seconds": 15
+      "description": {
+        "en": "What a player plays, with its cover, play/pause, next, volume and playlists.",
+        "fr": "Ce que joue un lecteur, avec pochette, lecture/pause, suivant, volume et playlists.",
+        "de": "Was ein Player spielt, mit Cover, Wiedergabe/Pause, Weiter, Lautstärke, Playlists.",
+        "es": "Lo que suena en un reproductor, con portada, reproducir/pausa, siguiente, volumen y listas."
+      },
+      "icon": "music",
+      "settings": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Player",
+            "fr": "Lecteur",
+            "de": "Player",
+            "es": "Reproductor"
+          },
+          "required": false,
+          "description": {
+            "en": "Empty: the first player added.",
+            "fr": "Vide : le premier lecteur ajouté.",
+            "de": "Leer: der erste hinzugefügte Player.",
+            "es": "Vacío: el primer reproductor añadido."
+          }
+        }
+      ],
+      "action_timeout_seconds": 30
     }
   ]
 }
