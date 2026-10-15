@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-15
+
 ### Added
 
 - Volumio players on the local network, one Gladys music device each: volume,
@@ -38,4 +40,5 @@ the notes of the version's GitHub Release.
   names, widget, messages and documentation.
 - `scripts/probe.mjs`, a read-only check of a real player.
 
-[Unreleased]: https://github.com/guim31/gladys-volumio/commits/main
+[Unreleased]: https://github.com/guim31/gladys-volumio/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/guim31/gladys-volumio/releases/tag/v1.0.1

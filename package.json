@@ -1,6 +1,6 @@
 {
   "name": "gladys-volumio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Gladys Assistant external integration for Volumio network music players (local REST API and real-time push).",
   "type": "module",
