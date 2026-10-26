@@ -17,6 +17,44 @@ export const readFixture = (name) =>
 
 const clone = (value) => structuredClone(value);
 
+// Real answers of a Volumio 2 (browse, search, getState, getQueue), read on
+// a test bench: see test/fixtures/volumio/README.md.
+export const LIBRARY = readFixture('library-v2.json');
+
+/** Volumio decodes `uri` and `query` once more than the HTTP layer. */
+const decodeTwice = (value) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+/** The tracks Volumio queues for an item: a container is exploded, a playlist URI adds nothing. */
+export function explode(item) {
+  const uri = item?.uri ?? '';
+  if (uri.startsWith('playlists/') && !uri.includes('://')) {
+    return [];
+  }
+  if (/^(albums|artists|genres):\/\//.test(uri)) {
+    const level = LIBRARY.browse[uri];
+    if (!level) {
+      return [];
+    }
+    return level.navigation.lists
+      .flatMap((list) => list.items)
+      .filter((row) => row.type === 'song')
+      .map((row) => queueEntry(row));
+  }
+  return [queueEntry(item)];
+}
+
+/** A queue entry as getQueue lists it: the title is `name`. */
+const queueEntry = (item) => {
+  const { title, ...rest } = clone(item);
+  return { ...rest, name: item.name ?? title ?? '', type: 'track' };
+};
+
 // The smallest valid PNG (1 × 1), served as album art.
 export const PNG_1PX = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -76,6 +114,8 @@ export class FakeVolumio {
     this.soundReads = soundReads;
     this.soundLeft = null;
     this.requests = [];
+    this.browsed = [];
+    this.socketEvents = [];
     this.commands = [];
     this.sockets = new Set();
   }
@@ -109,20 +149,52 @@ export class FakeVolumio {
         return json(Object.keys(this.playlists));
       case 'GET /api/v1/getzones':
         return json(this.zones);
-      case 'GET /api/v1/browse':
-        if (query.uri === 'radio/favourites') {
+      case 'GET /api/v1/browse': {
+        const uri = query.uri === undefined ? '' : decodeTwice(query.uri);
+        this.browsed.push(uri);
+        if (uri === 'radio/favourites') {
           return json(this.favourites);
         }
-        if (query.uri === 'radio/myWebRadio') {
+        if (uri === 'radio/myWebRadio') {
           return json(this.myWebRadios);
         }
+        if (uri.startsWith('playlists/') && this.playlists[uri.slice(10)]) {
+          return json({
+            navigation: {
+              lists: [
+                {
+                  items: this.playlists[uri.slice(10)].map((entry) => ({
+                    ...entry,
+                    title: entry.name ?? entry.title,
+                    type: 'song',
+                  })),
+                },
+              ],
+            },
+          });
+        }
+        if (LIBRARY.browse[uri]) {
+          return json(LIBRARY.browse[uri]);
+        }
         return json({ error: 'No Result' });
+      }
+      case 'GET /api/v1/search': {
+        const found = LIBRARY.search[decodeTwice(query.query ?? '').toLowerCase()];
+        return json(
+          found ?? {
+            navigation: {
+              isSearchResult: true,
+              lists: [{ type: 'title', title: 'No Results', items: [] }],
+            },
+          },
+        );
+      }
       case 'GET /api/v1/commands':
         return json(this.command(query));
       case 'POST /api/v1/replaceAndPlay':
         return json(this.replaceAndPlay(body));
       case 'POST /api/v1/addToQueue':
-        this.queue.push(...(Array.isArray(body) ? body : [body]).map((item) => clone(item)));
+        this.queue.push(...(Array.isArray(body) ? body : [body]).flatMap((item) => explode(item)));
         this.changed();
         return json({ response: 'success' });
       case 'GET /albumart':
@@ -229,8 +301,23 @@ export class FakeVolumio {
   }
 
   replaceAndPlay(body) {
+    if (body?.uri?.startsWith('playlists/') && !body.uri.includes('://')) {
+      // Played by its title, like Volumio (playPlaylist).
+      this.queue = [];
+      this.command({ cmd: 'playplaylist', name: body.title });
+      return { response: 'success' };
+    }
     if (body?.uri) {
-      this.queue = [clone(body)];
+      this.queue = explode(body);
+      if (this.queue.length === 0) {
+        // An URI that no longer exists: emptied, and "success" all the same.
+        Object.assign(this.state, readFixture('state-empty.json'), {
+          volume: this.state.volume,
+          mute: this.state.mute,
+        });
+        this.changed();
+        return { response: 'success' };
+      }
       this.load(0);
     } else if (Array.isArray(body?.list) && body.index !== undefined) {
       this.queue = clone(body.list);
@@ -246,6 +333,31 @@ export class FakeVolumio {
     this.soundLeft = /\.(mp3|wav|ogg)$/.test(this.state.uri) && body?.uri ? this.soundReads : null;
     this.changed();
     return { response: 'success' };
+  }
+
+  /** A socket.io event of the web interface (what the REST API lacks). */
+  socketEvent(name, payload) {
+    this.socketEvents.push([name, payload]);
+    if (name === 'setRepeat') {
+      this.state.repeat = payload.value === true;
+      this.state.repeatSingle = payload.value === true && payload.repeatSingle === true;
+      this.changed();
+    } else if (name === 'moveQueue' && this.moveQueue !== false) {
+      // CoreStateMachine.moveQueueItem: the current position follows.
+      const { from, to } = payload;
+      const current = this.state.position;
+      if (from < current && to > current) {
+        this.state.position -= 1;
+      } else if (from > current && to <= current) {
+        this.state.position += 1;
+      } else if (from === current) {
+        this.state.position = to;
+      }
+      if (this.queue.length > to) {
+        this.queue.splice(to, 0, this.queue.splice(from, 1)[0]);
+      }
+    }
+    // playNext: Volumio 2 has none, the event is ignored.
   }
 
   /** Make queue entry `position` the current track. */
@@ -348,9 +460,11 @@ class FakeSocket {
     } else if (packet === '40') {
       this.deliver('40{"sid":"fake-ns"}');
     } else if (packet.startsWith('42')) {
-      const [name] = JSON.parse(packet.slice(2));
+      const [name, payload] = JSON.parse(packet.slice(2));
       if (name === 'getState') {
         this.pushState(this.player.state);
+      } else {
+        this.player.socketEvent(name, payload);
       }
     }
   }

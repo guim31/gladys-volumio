@@ -26,3 +26,11 @@ Every value is invented or anonymized: UUIDs, names, addresses in
 | `browse-mywebradio.json`   | browse `radio/myWebRadio`                                   |
 | `zones.json`               | getzones of the living room player                          |
 | `mdns.json`                | what the core relays for `_Volumio._tcp` (scanNetwork)      |
+| `library-v2.json`          | real answers of a Volumio 2 test bench (see below)          |
+
+`library-v2.json` holds answers read on a real Volumio 2 (the community x86
+Docker image `jbonjean/volumio`, Volumio2 commit 307f918) with a generated
+library (sine tones, invented names): `browse` of the root and of several
+levels, `search`, `getState` playing, stopped and with an empty queue,
+`getQueue`. The web radios of the searches are public directory entries
+(TuneIn, SHOUTcast), cut to two per list.

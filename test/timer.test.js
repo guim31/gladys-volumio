@@ -48,22 +48,17 @@ test('idle players are read every minute', async (t) => {
   assert.ok(w);
 });
 
-test('an unchanged value is sent again every 6 hours', async (t) => {
+test('an unchanged value is never sent again (music features have no "no recent value")', async (t) => {
   const living = new FakeVolumio({ push: 'none', state: { status: 'stop' } });
   const w = await polledWorld(t, living);
   const volume = ids(w.gladys, living).feature('volume');
   const sent = () => w.fake.states.filter((s) => s.device_feature_external_id === volume).length;
   const first = sent();
-  for (let minute = 0; minute < 60; minute += 1) {
+  for (let minute = 0; minute < 7 * 60; minute += 1) {
     t.mock.timers.tick(60_000);
     await settle();
   }
   assert.equal(sent(), first, 'nothing changed: nothing sent');
-  for (let minute = 0; minute < 5 * 60 + 1; minute += 1) {
-    t.mock.timers.tick(60_000);
-    await settle();
-  }
-  assert.equal(sent(), first + 1);
 });
 
 test('a dropped push channel hands over to the timer, and comes back', async (t) => {

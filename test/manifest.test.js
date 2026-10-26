@@ -79,6 +79,11 @@ test('the widget forms (Gladys#3168) need Gladys >= 5.2.0, which also covers cat
   assert.ok(isAtLeast(minGladysVersion(), [5, 2, 0]));
 });
 
+test('the Gladys 5.3 music player: Gladys >= 5.3.0, every operation declared', () => {
+  assert.ok(isAtLeast(minGladysVersion(), [5, 3, 0]));
+  assert.deepEqual(manifest.music, { browse: true, search: true, queue: true, append: true });
+});
+
 test('every manifest action has a handler', async (t) => {
   const w = await world(t);
   for (const action of manifest.actions) {

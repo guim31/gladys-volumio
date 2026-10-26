@@ -13,14 +13,20 @@
 // A command is followed by a read, so the device shows its effect at once.
 // -----------------------------------------------------------------------------
 
-import { DEVICE_TRANSPORTS, createLogger } from '@gladysassistant/integration-sdk';
+import {
+  DEVICE_TRANSPORTS,
+  MUSIC_PLAYBACK_STATE,
+  MUSIC_REPEAT_MODE,
+  createLogger,
+} from '@gladysassistant/integration-sdk';
 import {
   FEATURE_KEYS,
   buildDevice,
   deviceIds,
   featureKeyOf,
-  featureStates,
   hostParam,
+  nothingLoaded,
+  nowPlaying,
   playerIdOf,
 } from './devices.js';
 import {
@@ -67,9 +73,6 @@ export const HUB_TIMINGS = {
   // A player that failed once is read again this soon, then every minute.
   retryMs: 15_000,
   unreachablePollMs: 60_000,
-  // An unchanged value is sent again this often (Gladys says "no recent
-  // value" past 48 h).
-  heartbeatMs: 6 * 60 * 60_000,
   // Push channel: retry delays, after a drop and after a failed opening.
   socketQuickRetryMs: 30_000,
   socketRetryMs: 5 * 60_000,
@@ -86,6 +89,9 @@ export const HUB_TIMINGS = {
   notificationStartMs: 10_000,
   // The core accepts one widget refresh per 10 s: the next one waits.
   widgetRefreshGapMs: 10_000,
+  // A command the REST API lacks (repeat one, play next) opens the socket.io
+  // channel for it when the push is not running: this long at most.
+  socketCommandWaitMs: 3_000,
 };
 
 // Playlists and radios shown in a widget form or a report, at most.
@@ -588,6 +594,9 @@ export class VolumioHub {
       record.widgetKey = null;
       this.nudgeWidget();
     }
+    // A player that no longer answers is shown stopped (its last track
+    // stays), never playing forever.
+    await this.publishStates(record, { reachable: false });
     await this.publishStatus();
     // Down for a while: it may have a new address (DHCP).
     if (
@@ -729,13 +738,28 @@ export class VolumioHub {
 
   // --- Publishing to Gladys ----------------------------------------------------------
 
-  async publishStates(record) {
+  /**
+   * The music features of a player, through publishNowPlaying (Gladys 5.3):
+   * diffed by the SDK, the position sent only on a change of state or track,
+   * or a seek (Gladys extrapolates it). Volume and mute go the same way: one
+   * channel per feature.
+   */
+  async publishStates(record, { reachable = true } = {}) {
     if (!record.active) {
       return;
     }
-    const states = featureStates(this.gladys, record.id, record.state);
+    let snapshot;
+    if (!reachable) {
+      snapshot = { playback_state: MUSIC_PLAYBACK_STATE.IDLE, position: 0 };
+    } else if (record.state) {
+      snapshot = nowPlaying(record.state, {
+        artworkUrl: record.client.artUrl(record.state.albumart),
+      });
+    } else {
+      return;
+    }
     try {
-      await this.gladys.publishChangedStates(states, { heartbeat: this.timings.heartbeatMs });
+      await this.gladys.publishNowPlaying(deviceIds(this.gladys, record.id).device, snapshot);
       this.resolved('states');
     } catch (err) {
       this.problem('states', `States of ${this.label(record)} refused: ${err.message}`);
@@ -891,13 +915,31 @@ export class VolumioHub {
     }
   }
 
-  /** A device feature: volume, play, pause, previous, next, notification. */
+  /**
+   * A device feature: volume, play, pause, previous, next, notification, and
+   * since Gladys 5.3 the playback state, position, shuffle, repeat, mute.
+   */
   async setValue(device, feature, value) {
     const record = this.target(device.external_id);
     const key = featureKeyOf(this.gladys, record.id, feature.external_id);
     switch (key) {
       case FEATURE_KEYS.VOLUME:
         return this.setVolume(record, value);
+      case FEATURE_KEYS.PLAYBACK_STATE:
+        return this.setPlayback(record, Number(value));
+      case FEATURE_KEYS.POSITION:
+        return this.seek(record, Number(value));
+      case FEATURE_KEYS.SHUFFLE:
+        return this.command(
+          record,
+          'random',
+          { value: Number(value) === 1 },
+          `shuffle ${Number(value) === 1 ? 'on' : 'off'}`,
+        );
+      case FEATURE_KEYS.REPEAT:
+        return this.setRepeat(record, Number(value));
+      case FEATURE_KEYS.MUTE:
+        return this.setMute(record, Number(value) === 1);
       case FEATURE_KEYS.PLAY:
         return this.play(record);
       case FEATURE_KEYS.PAUSE:
@@ -940,6 +982,122 @@ export class VolumioHub {
 
   play(record) {
     return this.command(record, 'play');
+  }
+
+  /** music/playback_state: 1 play, 0 pause (a web radio stops), 2 stop. */
+  setPlayback(record, value) {
+    switch (value) {
+      case MUSIC_PLAYBACK_STATE.PLAYING:
+        return this.play(record);
+      case MUSIC_PLAYBACK_STATE.PAUSED:
+        return this.pause(record);
+      case MUSIC_PLAYBACK_STATE.IDLE:
+        return this.command(record, 'stop');
+      default:
+        throw new Error(`Invalid playback state ${value}`);
+    }
+  }
+
+  /** music/position: a seek, in seconds. A web radio cannot be sought. */
+  async seek(record, value) {
+    if (!Number.isFinite(value) || value < 0) {
+      throw new Error(`Invalid position ${value}`);
+    }
+    const state = record.state;
+    if (!state || nothingLoaded(state) || state.status === 'stop') {
+      // Nothing to seek in: Volumio would ignore it.
+      return;
+    }
+    if (isStream(state)) {
+      throw new Error(pick(ACTION_TEXT.notSeekable, this.language));
+    }
+    const position = Math.round(value);
+    await this.command(record, 'seek', { position }, `seek ${position} s`);
+  }
+
+  /**
+   * music/repeat. The REST API sets repeat on or off (and always clears
+   * "repeat one"); "repeat one" is a socket.io event (`setRepeat`).
+   */
+  async setRepeat(record, value) {
+    if (value === MUSIC_REPEAT_MODE.ONE) {
+      await this.withSocket(record, (socket) => {
+        socket.emit('setRepeat', { value: true, repeatSingle: true });
+      });
+      logger.info(`${this.label(record)}: repeat one`);
+      this.afterCommand(record);
+      return;
+    }
+    if (value !== MUSIC_REPEAT_MODE.OFF && value !== MUSIC_REPEAT_MODE.ALL) {
+      throw new Error(`Invalid repeat mode ${value}`);
+    }
+    const on = value === MUSIC_REPEAT_MODE.ALL;
+    await this.command(record, 'repeat', { value: on }, `repeat ${on ? 'all' : 'off'}`);
+  }
+
+  /**
+   * Run `fn(socket)` with a live socket.io channel to the player: the push
+   * channel when it runs, else one opened for it (closed right after). For
+   * what the REST API lacks; throws a user-facing error without a channel.
+   */
+  async withSocket(record, fn) {
+    if (record.socket?.live) {
+      return fn(record.socket);
+    }
+    for (const eio of record.eioKnown ? [record.eio] : [record.eio, record.eio === 3 ? 4 : 3]) {
+      let settle;
+      const outcome = new Promise((resolve) => {
+        settle = resolve;
+      });
+      const socket = new VolumioSocket({
+        host: record.host,
+        eio,
+        createSocket: this.createSocket,
+        timings: { ...this.socketTimings, openTimeoutMs: this.timings.socketCommandWaitMs },
+        onState: () => {},
+        onLive: () => settle(true),
+        onClose: () => settle(false),
+      });
+      socket.start();
+      if (await outcome) {
+        try {
+          return await fn(socket);
+        } finally {
+          // Let the last packets leave before the channel closes.
+          setTimeout(() => socket.close(), 500).unref?.();
+        }
+      }
+      socket.close();
+    }
+    throw new Error(
+      labelled(record.name, pick(ACTION_TEXT.noRealtime, this.language), this.language),
+    );
+  }
+
+  /** A read for the music panel; errors become user-facing ones. */
+  async catalogRead(record, what, fn) {
+    logger.debug(`${this.label(record)}: ${what}`);
+    try {
+      return await fn(record.client);
+    } catch (err) {
+      throw await this.commandError(record, err);
+    }
+  }
+
+  /** Add items at the end of the queue (the music panel, a scene). */
+  async addToQueue(record, items, what) {
+    try {
+      await record.client.addToQueue(items);
+    } catch (err) {
+      throw await this.commandError(record, err);
+    }
+    logger.info(`${this.label(record)}: ${what}`);
+    this.afterCommand(record);
+  }
+
+  /** The bytes of an artwork (a cover of a player, or of the Internet). */
+  downloadArtwork(url, options) {
+    return new VolumioClient({ host: 'artwork', fetch: this.fetch }).download(url, options);
   }
 
   /** Pause; a web radio is stopped instead (Volumio cannot pause a stream). */
@@ -1178,7 +1336,12 @@ export class VolumioHub {
         await client.addToQueue(list);
       }
     }
-    if (state.repeat) {
+    if (state.repeat && state.repeatSingle) {
+      // "Repeat one" only exists over socket.io; without it, repeat all.
+      await this.withSocket(record, (socket) =>
+        socket.emit('setRepeat', { value: true, repeatSingle: true }),
+      ).catch(() => client.command('repeat', { value: true }));
+    } else if (state.repeat) {
       await client.command('repeat', { value: true });
     }
     if (volumeChanged && state.volume !== null) {

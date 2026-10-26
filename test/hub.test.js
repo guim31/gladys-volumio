@@ -68,7 +68,11 @@ test('each feature drives the player', async (t) => {
   assert.equal(w.fake.lastState(feature(w, living, 'volume').external_id), 64);
   assert.deepEqual(living.commands, ['pause', 'play', 'next', 'prev', 'volume 64']);
 
-  const refused = await w.fake.setValue(dev, feature(w, living, 'playback_state'), 1);
+  // Gladys 5.3: the playback state is the command too (2 = stop).
+  await set('playback_state', 2);
+  assert.equal(living.state.status, 'stop');
+  assert.equal(w.fake.lastState(feature(w, living, 'playback_state').external_id), PLAYBACK.IDLE);
+  const refused = await w.fake.setValue(dev, feature(w, living, 'playback_state'), 3);
   assert.equal(refused.success, false);
 });
 

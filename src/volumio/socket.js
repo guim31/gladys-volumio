@@ -97,9 +97,20 @@ export class VolumioSocket {
 
   /** Ask the player for its state now (answered by a pushState). */
   requestState() {
-    if (this.live) {
-      this.send(`42${JSON.stringify(['getState'])}`);
+    this.emit('getState');
+  }
+
+  /**
+   * Send a socket.io event (`playNext`, `setRepeat`...): the commands the
+   * REST API lacks. No answer comes back; the caller checks the effect.
+   * @returns {boolean} false when the channel is not live (nothing sent)
+   */
+  emit(name, payload) {
+    if (!this.live) {
+      return false;
     }
+    this.send(`42${JSON.stringify(payload === undefined ? [name] : [name, payload])}`);
+    return true;
   }
 
   handle(data) {

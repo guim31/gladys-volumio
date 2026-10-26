@@ -6,6 +6,7 @@
 
 import { createLogger } from '@gladysassistant/integration-sdk';
 import { ArtCache } from './art.js';
+import * as catalog from './catalog.js';
 import { normalizeConfig } from './config.js';
 import { VolumioHub } from './hub.js';
 import { SCENE_ACTIONS } from './scenes.js';
@@ -71,6 +72,17 @@ export function registerHandlers(gladys, options = {}) {
   gladys.onPoll(whenReady((device) => hub.pollDevice(device)));
 
   gladys.onDeviceCreated(whenReady((device) => hub.onDeviceCreated(device)));
+  // "Update" in the Discover tab (new features of 1.1): publish everything again.
+  gladys.onDeviceUpdated(whenReady((device) => hub.onDeviceCreated(device)));
+
+  // The Gladys 5.3 music panel and the `music.play-media` scene action
+  // (manifest `music`), and the bytes of the artworks.
+  gladys.onMusicBrowse(whenReady((device, options) => catalog.browse(hub, device, options)));
+  gladys.onMusicSearch(whenReady((device, options) => catalog.search(hub, device, options)));
+  gladys.onMusicPlay(whenReady((device, media, mode) => catalog.play(hub, device, media, mode)));
+  gladys.onMusicQueueGet(whenReady((device, options) => catalog.queueGet(hub, device, options)));
+  gladys.onMusicQueuePlay(whenReady((device, index) => catalog.queuePlay(hub, device, index)));
+  gladys.onMusicGetArtwork(whenReady((key) => catalog.artwork(hub, key)));
   gladys.onDeviceDeleted(whenReady((device) => hub.onDeviceDeleted(device)));
 
   gladys.onConfigUpdated(

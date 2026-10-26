@@ -1,0 +1,702 @@
+{
+  "browse": {
+    "": {
+      "navigation": {
+        "lists": [
+          {
+            "albumart": "/albumart?sourceicon=music_service/mpd/favouritesicon.png",
+            "name": "Favorites",
+            "uri": "favourites",
+            "plugin_type": "",
+            "plugin_name": ""
+          },
+          {
+            "albumart": "/albumart?sourceicon=music_service/mpd/playlisticon.png",
+            "name": "Playlists",
+            "uri": "playlists",
+            "plugin_type": "music_service",
+            "plugin_name": "mpd"
+          },
+          {
+            "albumart": "/albumart?sourceicon=music_service/mpd/musiclibraryicon.png",
+            "name": "Music Library",
+            "uri": "music-library",
+            "plugin_type": "music_service",
+            "plugin_name": "mpd"
+          },
+          {
+            "albumart": "/albumart?sourceicon=music_service/mpd/artisticon.png",
+            "name": "Artists",
+            "uri": "artists://",
+            "plugin_type": "music_service",
+            "plugin_name": "mpd"
+          },
+          {
+            "albumart": "/albumart?sourceicon=music_service/mpd/albumicon.png",
+            "name": "Albums",
+            "uri": "albums://",
+            "plugin_type": "music_service",
+            "plugin_name": "mpd"
+          },
+          {
+            "albumart": "/albumart?sourceicon=music_service/mpd/genreicon.png",
+            "name": "Genres",
+            "uri": "genres://",
+            "plugin_type": "music_service",
+            "plugin_name": "mpd"
+          },
+          {
+            "name": "Media Servers",
+            "uri": "upnp",
+            "plugin_type": "music_service",
+            "plugin_name": "upnp_browser",
+            "albumart": "/albumart?sourceicon=music_service/upnp_browser/dlnaicon.png"
+          },
+          {
+            "albumart": "/albumart?sourceicon=music_service/last_100/icon.png",
+            "name": "Last 100",
+            "uri": "Last_100",
+            "plugin_type": "music_service",
+            "plugin_name": "last_100"
+          },
+          {
+            "albumart": "/albumart?sourceicon=music_service/webradio/icon.png",
+            "icon": "fa fa-microphone",
+            "name": "Web Radio",
+            "uri": "radio",
+            "plugin_type": "music_service",
+            "plugin_name": "webradio"
+          }
+        ]
+      }
+    },
+    "music-library": {
+      "navigation": {
+        "prev": {
+          "uri": ""
+        },
+        "lists": [
+          {
+            "availableListViews": ["grid", "list"],
+            "items": [
+              {
+                "type": "folder",
+                "title": "Alpha Band",
+                "service": "mpd",
+                "albumart": "/albumart?cacheid=371&path=%2Fmnt%2FAlpha%20Band&icon=folder-o&metadata=false",
+                "uri": "music-library/Alpha Band"
+              },
+              {
+                "type": "folder",
+                "title": "Beta Quartet",
+                "service": "mpd",
+                "albumart": "/albumart?cacheid=371&path=%2Fmnt%2FBeta%20Quartet&icon=folder-o&metadata=false",
+                "uri": "music-library/Beta Quartet"
+              },
+              {
+                "type": "folder",
+                "title": "Delta",
+                "service": "mpd",
+                "albumart": "/albumart?cacheid=371&path=%2Fmnt%2FDelta&icon=folder-o&metadata=false",
+                "uri": "music-library/Delta"
+              },
+              {
+                "type": "folder",
+                "title": "Gamma",
+                "service": "mpd",
+                "albumart": "/albumart?cacheid=371&path=%2Fmnt%2FGamma&icon=folder-o&metadata=false",
+                "uri": "music-library/Gamma"
+              },
+              {
+                "type": "folder",
+                "title": "Loose",
+                "service": "mpd",
+                "albumart": "/albumart?cacheid=371&path=%2Fmnt%2FLoose&icon=folder-o&metadata=false",
+                "uri": "music-library/Loose"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "music-library/Loose": {
+      "navigation": {
+        "prev": {
+          "uri": "music-library"
+        },
+        "lists": [
+          {
+            "availableListViews": ["grid", "list"],
+            "items": [
+              {
+                "service": "mpd",
+                "type": "song",
+                "title": "Café \"Élan\"",
+                "artist": "Gamma & Co",
+                "album": "",
+                "uri": "music-library/Loose/cafe.mp3",
+                "albumart": "/albumart?cacheid=371&path=%2Fmnt%2FLoose&icon=music&metadata=false"
+              },
+              {
+                "service": "mpd",
+                "type": "song",
+                "title": "Doorbell",
+                "artist": "",
+                "album": "",
+                "uri": "music-library/Loose/doorbell.mp3",
+                "albumart": "/albumart?cacheid=371&path=%2Fmnt%2FLoose&icon=music&metadata=false"
+              },
+              {
+                "service": "mpd",
+                "type": "song",
+                "title": "untagged track.mp3",
+                "artist": "",
+                "album": "",
+                "uri": "music-library/Loose/untagged track.mp3",
+                "albumart": "/albumart?cacheid=371&path=%2Fmnt%2FLoose&icon=music&metadata=false"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "albums://": {
+      "navigation": {
+        "lists": [
+          {
+            "availableListViews": ["list", "grid"],
+            "items": [
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "First Light",
+                "artist": "Alpha Band",
+                "year": "",
+                "album": "",
+                "uri": "albums://Alpha%20Band/First%20Light",
+                "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=%2Fmnt%2FAlpha%20Band%2FFirst%20Light&icon=dot-circle-o&metadata=false"
+              },
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "Heavy Cover",
+                "artist": "Beta Quartet",
+                "year": "",
+                "album": "",
+                "uri": "albums://Beta%20Quartet/Heavy%20Cover",
+                "albumart": "/albumart?cacheid=371&web=Beta%20Quartet/Heavy%20Cover/extralarge&path=%2Fmnt%2FBeta%20Quartet%2FHeavy%20Cover&icon=dot-circle-o&metadata=false"
+              },
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "Big Folder Cover",
+                "artist": "Delta",
+                "year": "",
+                "album": "",
+                "uri": "albums://Delta/Big%20Folder%20Cover",
+                "albumart": "/albumart?cacheid=371&web=Delta/Big%20Folder%20Cover/extralarge&path=%2Fmnt%2FDelta%2FBig%20Folder%20Cover&icon=dot-circle-o&metadata=false"
+              },
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "Small Embedded",
+                "artist": "Gamma",
+                "year": "",
+                "album": "",
+                "uri": "albums://Gamma/Small%20Embedded",
+                "albumart": "/albumart?cacheid=371&web=Gamma/Small%20Embedded/extralarge&path=%2Fmnt%2FGamma%2FSmall%20Embedded&icon=dot-circle-o&metadata=false"
+              },
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "",
+                "artist": "*",
+                "year": "",
+                "album": "",
+                "uri": "albums://*/",
+                "albumart": "/albumart?cacheid=371&web=*//extralarge&path=%2Fmnt%2FLoose&icon=dot-circle-o&metadata=false"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "albums://Alpha%20Band/First%20Light": {
+      "navigation": {
+        "info": {
+          "uri": "albums://Alpha%20Band/First%20Light",
+          "service": "mpd",
+          "artist": "Alpha Band",
+          "album": "First Light",
+          "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=Alpha%20Band%2FFirst%20Light&icon=dot-circle-o&metadata=false",
+          "year": "",
+          "genre": "",
+          "type": "album",
+          "trackType": "mp3",
+          "duration": "1:15"
+        },
+        "lists": [
+          {
+            "availableListViews": ["list"],
+            "items": [
+              {
+                "uri": "music-library/Alpha Band/First Light/01 - Dawn 1.mp3",
+                "service": "mpd",
+                "title": "Dawn 1",
+                "artist": "Alpha Band",
+                "album": "First Light",
+                "type": "song",
+                "tracknumber": "1",
+                "duration": 25,
+                "trackType": "mp3"
+              },
+              {
+                "uri": "music-library/Alpha Band/First Light/02 - Dawn 2.mp3",
+                "service": "mpd",
+                "title": "Dawn 2",
+                "artist": "Alpha Band",
+                "album": "First Light",
+                "type": "song",
+                "tracknumber": "2",
+                "duration": 25,
+                "trackType": "mp3"
+              },
+              {
+                "uri": "music-library/Alpha Band/First Light/03 - Dawn 3.mp3",
+                "service": "mpd",
+                "title": "Dawn 3",
+                "artist": "Alpha Band",
+                "album": "First Light",
+                "type": "song",
+                "tracknumber": "3",
+                "duration": 25,
+                "trackType": "mp3"
+              }
+            ]
+          }
+        ],
+        "prev": {
+          "uri": "albums://"
+        }
+      }
+    },
+    "artists://": {
+      "navigation": {
+        "lists": [
+          {
+            "availableListViews": ["list", "grid"],
+            "items": [
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "Alpha Band",
+                "albumart": "/albumart?cacheid=371&web=Alpha%20Band//extralarge&icon=users",
+                "uri": "artists://Alpha%20Band"
+              },
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "Beta Quartet",
+                "albumart": "/albumart?cacheid=371&web=Beta%20Quartet//extralarge&icon=users",
+                "uri": "artists://Beta%20Quartet"
+              },
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "Delta",
+                "albumart": "/albumart?cacheid=371&web=Delta//extralarge&icon=users",
+                "uri": "artists://Delta"
+              },
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "Gamma",
+                "albumart": "/albumart?cacheid=371&web=Gamma//extralarge&icon=users",
+                "uri": "artists://Gamma"
+              },
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "Gamma & Co",
+                "albumart": "/albumart?cacheid=371&web=Gamma%20%26%20Co//extralarge&icon=users",
+                "uri": "artists://Gamma%20%26%20Co"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "artists://Alpha%20Band": {
+      "navigation": {
+        "lists": [
+          {
+            "title": "Albums (Alpha Band)",
+            "icon": "fa icon",
+            "availableListViews": ["list", "grid"],
+            "items": [
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "First Light",
+                "artist": "Alpha Band",
+                "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=Alpha%20Band%2FFirst%20Light&icon=dot-circle-o&metadata=false",
+                "uri": "artists://Alpha%20Band/First%20Light"
+              }
+            ]
+          },
+          {
+            "title": "Tracks (Alpha Band)",
+            "icon": "fa icon",
+            "availableListViews": ["list"],
+            "items": [
+              {
+                "service": "mpd",
+                "type": "song",
+                "title": "Dawn 1",
+                "artist": "Alpha Band",
+                "album": "First Light",
+                "year": "",
+                "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=Alpha%20Band%2FFirst%20Light&icon=dot-circle-o&metadata=false",
+                "uri": "music-library/Alpha Band/First Light/01 - Dawn 1.mp3"
+              },
+              {
+                "service": "mpd",
+                "type": "song",
+                "title": "Dawn 2",
+                "artist": "Alpha Band",
+                "album": "First Light",
+                "year": "",
+                "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=Alpha%20Band%2FFirst%20Light&icon=dot-circle-o&metadata=false",
+                "uri": "music-library/Alpha Band/First Light/02 - Dawn 2.mp3"
+              },
+              {
+                "service": "mpd",
+                "type": "song",
+                "title": "Dawn 3",
+                "artist": "Alpha Band",
+                "album": "First Light",
+                "year": "",
+                "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=Alpha%20Band%2FFirst%20Light&icon=dot-circle-o&metadata=false",
+                "uri": "music-library/Alpha Band/First Light/03 - Dawn 3.mp3"
+              }
+            ]
+          }
+        ],
+        "prev": {
+          "uri": "artists://"
+        },
+        "info": {
+          "uri": "artists://Alpha%20Band",
+          "title": "Alpha Band",
+          "service": "mpd",
+          "type": "artist",
+          "albumart": "/albumart?cacheid=371&web=Alpha%20Band//extralarge&icon=users"
+        }
+      }
+    },
+    "playlists": {
+      "navigation": {
+        "lists": [
+          {
+            "availableListViews": ["list"],
+            "items": [
+              {
+                "service": "mpd",
+                "type": "playlist",
+                "title": "Apéro du soir",
+                "icon": "fa fa-list-ol",
+                "uri": "playlists/Apéro du soir"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "playlists/Apéro du soir": {
+      "navigation": {
+        "lists": [
+          {
+            "availableListViews": ["list"],
+            "items": [
+              {
+                "service": "mpd",
+                "type": "song",
+                "title": "Dawn 1",
+                "artist": "Alpha Band",
+                "album": "First Light",
+                "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=%2Fmnt%2FAlpha%20Band%2FFirst%20Light&metadata=false",
+                "uri": "music-library/Alpha Band/First Light/01 - Dawn 1.mp3"
+              },
+              {
+                "service": "mpd",
+                "type": "song",
+                "title": "Café \"Élan\"",
+                "artist": "Gamma & Co",
+                "album": "",
+                "uri": "music-library/Loose/cafe.mp3"
+              }
+            ]
+          }
+        ],
+        "info": {
+          "uri": "playlists/favourites",
+          "title": "Apéro du soir",
+          "name": "Apéro du soir",
+          "service": "mpd",
+          "type": "play-playlist",
+          "albumart": "/albumart?sourceicon=music_service/mpd/playlisticon.png"
+        },
+        "prev": {
+          "uri": "playlists"
+        }
+      }
+    }
+  },
+  "search": {
+    "dawn": {
+      "navigation": {
+        "isSearchResult": true,
+        "lists": [
+          {
+            "title": "Found 3 Tracks 'dawn'",
+            "availableListViews": ["list"],
+            "items": [
+              {
+                "service": "mpd",
+                "type": "song",
+                "title": "Dawn 1",
+                "artist": "Alpha Band",
+                "album": "First Light",
+                "uri": "music-library/Alpha Band/First Light/01 - Dawn 1.mp3",
+                "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=%2Fmnt%2FAlpha%20Band%2FFirst%20Light&icon=fa-tags&metadata=false"
+              },
+              {
+                "service": "mpd",
+                "type": "song",
+                "title": "Dawn 2",
+                "artist": "Alpha Band",
+                "album": "First Light",
+                "uri": "music-library/Alpha Band/First Light/02 - Dawn 2.mp3",
+                "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=%2Fmnt%2FAlpha%20Band%2FFirst%20Light&icon=fa-tags&metadata=false"
+              },
+              {
+                "service": "mpd",
+                "type": "song",
+                "title": "Dawn 3",
+                "artist": "Alpha Band",
+                "album": "First Light",
+                "uri": "music-library/Alpha Band/First Light/03 - Dawn 3.mp3",
+                "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=%2Fmnt%2FAlpha%20Band%2FFirst%20Light&icon=fa-tags&metadata=false"
+              }
+            ]
+          },
+          {
+            "title": "Web Radio",
+            "icon": "fa icon",
+            "availableListViews": ["list"],
+            "items": [
+              {
+                "service": "webradio",
+                "type": "webradio",
+                "title": "Radio Dawn",
+                "artist": "",
+                "album": "",
+                "albumart": "http://cdn-radiotime-logos.tunein.com/s0q.png",
+                "icon": "",
+                "uri": "http://opml.radiotime.com/Tune.ashx?id=s67853"
+              },
+              {
+                "service": "webradio",
+                "type": "webradio",
+                "title": "The Dawn",
+                "artist": "",
+                "album": "",
+                "albumart": "http://cdn-profiles.tunein.com/s322715/images/logoq.png?t=876",
+                "icon": "",
+                "uri": "http://opml.radiotime.com/Tune.ashx?id=s322715"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "gamma": {
+      "navigation": {
+        "isSearchResult": true,
+        "lists": [
+          {
+            "title": "Found 2 Artists 'gamma'",
+            "availableListViews": ["list", "grid"],
+            "items": [
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "Gamma",
+                "uri": "artists://Gamma",
+                "albumart": "/albumart?cacheid=371&web=Gamma//extralarge&icon=users"
+              },
+              {
+                "service": "mpd",
+                "type": "folder",
+                "title": "Gamma & Co",
+                "uri": "artists://Gamma%20%26%20Co",
+                "albumart": "/albumart?cacheid=371&web=Gamma%20%26%20Co//extralarge&icon=users"
+              }
+            ]
+          },
+          {
+            "title": "Web Radio",
+            "icon": "fa icon",
+            "availableListViews": ["list"],
+            "items": [
+              {
+                "service": "webradio",
+                "type": "webradio",
+                "title": "Gamma 91.1 FM",
+                "artist": "",
+                "album": "",
+                "albumart": "http://cdn-profiles.tunein.com/s287315/images/logoq.jpg?t=164358",
+                "icon": "",
+                "uri": "http://opml.radiotime.com/Tune.ashx?id=s287315"
+              },
+              {
+                "service": "webradio",
+                "type": "webradio",
+                "title": "Gamma Radio",
+                "artist": "",
+                "album": "",
+                "albumart": "http://cdn-radiotime-logos.tunein.com/s63624q.png",
+                "icon": "",
+                "uri": "http://opml.radiotime.com/Tune.ashx?id=s63624"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "state": {
+    "playing": {
+      "status": "play",
+      "position": 0,
+      "title": "Dawn 1",
+      "artist": "Alpha Band",
+      "album": "First Light",
+      "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=%2Fmnt%2FAlpha%20Band%2FFirst%20Light&metadata=false",
+      "uri": "music-library/Alpha Band/First Light/01 - Dawn 1.mp3",
+      "trackType": "mp3",
+      "seek": 1502,
+      "duration": 25,
+      "samplerate": "44.1 kHz",
+      "bitdepth": "24 bit",
+      "channels": 2,
+      "random": true,
+      "repeat": false,
+      "repeatSingle": false,
+      "consume": false,
+      "volume": "",
+      "dbVolume": null,
+      "disableVolumeControl": false,
+      "mute": true,
+      "stream": "mp3",
+      "updatedb": false,
+      "volatile": false,
+      "service": "mpd"
+    },
+    "stopped": {
+      "status": "stop",
+      "position": 0,
+      "title": "Dawn 1",
+      "artist": "Alpha Band",
+      "album": "First Light",
+      "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=%2Fmnt%2FAlpha%20Band%2FFirst%20Light&metadata=false",
+      "uri": "music-library/Alpha Band/First Light/01 - Dawn 1.mp3",
+      "trackType": "mp3",
+      "seek": 250,
+      "duration": 25,
+      "samplerate": "44.1 kHz",
+      "bitdepth": "24 bit",
+      "channels": 2,
+      "random": true,
+      "repeat": false,
+      "repeatSingle": false,
+      "consume": false,
+      "volume": "",
+      "dbVolume": null,
+      "disableVolumeControl": false,
+      "mute": true,
+      "stream": "mp3",
+      "updatedb": false,
+      "volatile": false,
+      "service": "mpd"
+    },
+    "empty": {
+      "status": "stop",
+      "position": 0,
+      "title": "",
+      "artist": "",
+      "album": "",
+      "albumart": "/albumart",
+      "duration": 0,
+      "uri": "",
+      "seek": 0,
+      "samplerate": "",
+      "channels": "",
+      "bitdepth": "",
+      "Streaming": false,
+      "service": "mpd",
+      "volume": "",
+      "dbVolume": null,
+      "mute": true,
+      "disableVolumeControl": false,
+      "random": true,
+      "repeat": false,
+      "repeatSingle": false,
+      "updatedb": false,
+      "consume": false
+    }
+  },
+  "queue": {
+    "queue": [
+      {
+        "uri": "music-library/Alpha Band/First Light/01 - Dawn 1.mp3",
+        "service": "mpd",
+        "name": "Dawn 1",
+        "artist": "Alpha Band",
+        "album": "First Light",
+        "type": "track",
+        "tracknumber": 0,
+        "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=%2Fmnt%2FAlpha%20Band%2FFirst%20Light&metadata=false",
+        "duration": 25,
+        "trackType": "mp3",
+        "samplerate": "44.1 kHz",
+        "bitdepth": "24 bit",
+        "channels": 2
+      },
+      {
+        "uri": "music-library/Alpha Band/First Light/02 - Dawn 2.mp3",
+        "service": "mpd",
+        "name": "Dawn 2",
+        "artist": "Alpha Band",
+        "album": "First Light",
+        "type": "track",
+        "tracknumber": 0,
+        "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=%2Fmnt%2FAlpha%20Band%2FFirst%20Light&metadata=false",
+        "duration": 25,
+        "trackType": "mp3"
+      },
+      {
+        "uri": "music-library/Alpha Band/First Light/03 - Dawn 3.mp3",
+        "service": "mpd",
+        "name": "Dawn 3",
+        "artist": "Alpha Band",
+        "album": "First Light",
+        "type": "track",
+        "tracknumber": 0,
+        "albumart": "/albumart?cacheid=371&web=Alpha%20Band/First%20Light/extralarge&path=%2Fmnt%2FAlpha%20Band%2FFirst%20Light&metadata=false",
+        "duration": 25,
+        "trackType": "mp3"
+      }
+    ]
+  }
+}

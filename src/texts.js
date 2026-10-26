@@ -104,6 +104,42 @@ export const ACTION_TEXT = {
     de: (name, player) => `Playlist „${name}“ auf ${player} nicht gefunden.`,
     es: (name, player) => `Lista «${name}» no encontrada en ${player}.`,
   },
+  unknownMedia: {
+    en: 'This item is not one of this player: browse or search again.',
+    fr: "Cet élément n'est pas un élément de ce lecteur : parcourez ou recherchez à nouveau.",
+    de: 'Dieses Element gehört nicht zu diesem Player: Durchsuche oder suche erneut.',
+    es: 'Este elemento no pertenece a este reproductor: explore o busque de nuevo.',
+  },
+  nothingToPlay: {
+    en: 'Volumio found nothing to play for this item (removed from the library?).',
+    fr: "Volumio n'a rien trouvé à lire pour cet élément (retiré de la bibliothèque ?).",
+    de: 'Volumio hat für dieses Element nichts zum Abspielen gefunden (aus der Bibliothek entfernt?).',
+    es: 'Volumio no ha encontrado nada que reproducir para este elemento (¿eliminado de la biblioteca?).',
+  },
+  notInQueue: {
+    en: 'This track is no longer in the queue.',
+    fr: "Ce morceau n'est plus dans la file d'attente.",
+    de: 'Dieser Titel ist nicht mehr in der Warteschlange.',
+    es: 'Esta pista ya no está en la cola.',
+  },
+  addedAtEnd: {
+    en: 'Added at the end of the queue: the player did not move it after the current track.',
+    fr: "Ajouté en fin de file : le lecteur ne l'a pas déplacé après le morceau en cours.",
+    de: 'Am Ende der Warteschlange hinzugefügt: Der Player hat es nicht hinter den aktuellen Titel verschoben.',
+    es: 'Añadido al final de la cola: el reproductor no lo ha movido después de la pista actual.',
+  },
+  notSeekable: {
+    en: 'A web radio cannot be moved forward or back.',
+    fr: 'Une webradio ne peut pas être avancée ni reculée.',
+    de: 'Ein Webradio kann nicht vor- oder zurückgespult werden.',
+    es: 'Una radio web no se puede avanzar ni retroceder.',
+  },
+  noRealtime: {
+    en: 'the real-time channel (socket.io), needed for this command, does not answer',
+    fr: 'le canal temps réel (socket.io), nécessaire pour cette commande, ne répond pas',
+    de: 'der für diesen Befehl nötige Echtzeitkanal (socket.io) antwortet nicht',
+    es: 'el canal en tiempo real (socket.io), necesario para este comando, no responde',
+  },
   radioNotFound: {
     en: (name, player) => `Web radio "${name}" not found in the favourites of ${player}.`,
     fr: (name, player) => `Webradio « ${name} » introuvable dans les favoris de ${player}.`,
