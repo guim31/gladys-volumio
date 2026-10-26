@@ -27,6 +27,8 @@ export class VolumioError extends Error {
 export const REQUEST_TIMEOUT_MS = 5000;
 // What a command may take: replaceAndPlay resolves a web radio first.
 export const COMMAND_TIMEOUT_MS = 10_000;
+// The music panel: Gladys gives up after 10 s for the whole operation.
+export const CATALOG_TIMEOUT_MS = 7_000;
 
 export class VolumioClient {
   /**
@@ -63,8 +65,12 @@ export class VolumioClient {
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (err) {
-      const reason = err?.name === 'TimeoutError' ? 'no answer' : (err?.cause?.code ?? err.message);
-      throw new VolumioError(ERROR_KINDS.UNREACHABLE, `${this.host}: ${reason}`);
+      const timeout = err?.name === 'TimeoutError';
+      const reason = timeout ? 'no answer' : (err?.cause?.code ?? err.message);
+      const error = new VolumioError(ERROR_KINDS.UNREACHABLE, `${this.host}: ${reason}`);
+      // A slow answer (a big library, a slow plugin) is not a player gone.
+      error.timeout = timeout;
+      throw error;
     }
     let text;
     try {
@@ -124,7 +130,7 @@ export class VolumioClient {
   async browse(uri) {
     const data = await this.request('browse', {
       query: uri ? { uri: encodeURIComponent(uri) } : {},
-      timeoutMs: COMMAND_TIMEOUT_MS,
+      timeoutMs: CATALOG_TIMEOUT_MS,
     });
     return data?.navigation ?? { lists: [] };
   }
@@ -133,7 +139,7 @@ export class VolumioClient {
   async search(query) {
     const data = await this.request('search', {
       query: { query: encodeURIComponent(query) },
-      timeoutMs: COMMAND_TIMEOUT_MS,
+      timeoutMs: CATALOG_TIMEOUT_MS,
     });
     return data?.navigation ?? { lists: [] };
   }
@@ -156,20 +162,20 @@ export class VolumioClient {
   }
 
   /** Empty the queue, add these items and play (`{ item }`, `{ list, index }` or one item). */
-  replaceAndPlay(payload) {
+  replaceAndPlay(payload, { timeoutMs = COMMAND_TIMEOUT_MS } = {}) {
     return this.request('replaceAndPlay', {
       method: 'POST',
       body: payload,
-      timeoutMs: COMMAND_TIMEOUT_MS,
+      timeoutMs,
     });
   }
 
   /** Add items at the end of the queue, without playing them. */
-  addToQueue(items) {
+  addToQueue(items, { timeoutMs = COMMAND_TIMEOUT_MS } = {}) {
     return this.request('addToQueue', {
       method: 'POST',
       body: items,
-      timeoutMs: COMMAND_TIMEOUT_MS,
+      timeoutMs,
     });
   }
 

@@ -197,8 +197,6 @@ commence, se met en pause ou saute, et la boîte Musique fait avancer la barre d
   passent pas forcément ensuite.
 - Jouer un élément qui n'existe plus (une scène gardée des mois, un fichier supprimé) vide la file : Volumio la
   vide avant de s'en apercevoir. Gladys le signale.
-- Un élément dont l'identifiant dépasserait 512 caractères (un dossier très profond) est gardé par
-  l'intégration jusqu'à son redémarrage : une scène faite de cet élément ne marche plus après un redémarrage.
 - Un déplacement juste au début d'un morceau peut être ignoré par Volumio 2 (vu sur un banc de test).
 - Gladys 5.2 ne transmet pas aux intégrations externes le volume de son action de scène « diffuser une
   notification » : c'est le volume des notifications de la configuration qui s'applique.

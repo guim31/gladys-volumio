@@ -45,7 +45,7 @@ import {
   pick,
   sourceLabel,
 } from './texts.js';
-import { VolumioClient } from './volumio/client.js';
+import { CATALOG_TIMEOUT_MS, VolumioClient } from './volumio/client.js';
 import {
   browseItems,
   isStream,
@@ -232,6 +232,7 @@ export class VolumioHub {
       media: null,
       notifying: null,
       notification: null,
+      queueTask: null,
     };
   }
 
@@ -749,7 +750,14 @@ export class VolumioHub {
       return;
     }
     let snapshot;
-    if (!reachable) {
+    if (record.notification && reachable) {
+      // A notification plays: the Music box keeps the track it interrupts
+      // (no "title changed" twice per notification), only the state moves.
+      snapshot = record.state ? { playback_state: nowPlaying(record.state).playback_state } : null;
+      if (!snapshot) {
+        return;
+      }
+    } else if (!reachable) {
       snapshot = { playback_state: MUSIC_PLAYBACK_STATE.IDLE, position: 0 };
     } else if (record.state) {
       snapshot = nowPlaying(record.state, {
@@ -1044,7 +1052,13 @@ export class VolumioHub {
     if (record.socket?.live) {
       return fn(record.socket);
     }
+    // One deadline for every attempt and phase (the set-value ack is awaited 5 s).
+    const deadline = this.now() + this.timings.socketCommandWaitMs;
     for (const eio of record.eioKnown ? [record.eio] : [record.eio, record.eio === 3 ? 4 : 3]) {
+      const left = deadline - this.now();
+      if (left <= 0) {
+        break;
+      }
       let settle;
       const outcome = new Promise((resolve) => {
         settle = resolve;
@@ -1053,13 +1067,16 @@ export class VolumioHub {
         host: record.host,
         eio,
         createSocket: this.createSocket,
-        timings: { ...this.socketTimings, openTimeoutMs: this.timings.socketCommandWaitMs },
+        timings: { ...this.socketTimings, openTimeoutMs: left },
         onState: () => {},
         onLive: () => settle(true),
         onClose: () => settle(false),
       });
+      const timer = setTimeout(() => settle(false), left);
       socket.start();
-      if (await outcome) {
+      const live = await outcome;
+      clearTimeout(timer);
+      if (live) {
         try {
           return await fn(socket);
         } finally {
@@ -1080,16 +1097,48 @@ export class VolumioHub {
     try {
       return await fn(record.client);
     } catch (err) {
-      throw await this.commandError(record, err);
+      throw await this.catalogError(record, err);
     }
   }
 
+  /**
+   * The error of a music panel operation. A slow answer (a big library, a
+   * slow plugin, a playlist of hundreds of tracks) does not make the player
+   * unreachable: the reads of the hub tell that.
+   */
+  async catalogError(record, err) {
+    if (err?.timeout) {
+      logger.warn(`${this.label(record)}: no answer in time (${err.message})`);
+      return new Error(
+        labelled(record.name, pick(ACTION_TEXT.tooSlow, this.language), this.language),
+      );
+    }
+    return this.commandError(record, err);
+  }
+
+  /** One change of the queue at a time per player (music panel, scenes). */
+  queueTask(record, fn) {
+    const run = (record.queueTask ?? Promise.resolve()).catch(() => {}).then(fn);
+    record.queueTask = run;
+    run
+      .catch(() => {})
+      .finally(() => {
+        if (record.queueTask === run) {
+          record.queueTask = null;
+        }
+      });
+    return run;
+  }
+
   /** Add items at the end of the queue (the music panel, a scene). */
-  async addToQueue(record, items, what) {
+  async addToQueue(record, items, what, { catalog = false } = {}) {
     try {
-      await record.client.addToQueue(items);
+      await record.client.addToQueue(
+        items,
+        catalog ? { timeoutMs: CATALOG_TIMEOUT_MS } : undefined,
+      );
     } catch (err) {
-      throw await this.commandError(record, err);
+      throw await (catalog ? this.catalogError(record, err) : this.commandError(record, err));
     }
     logger.info(`${this.label(record)}: ${what}`);
     this.afterCommand(record);
@@ -1192,11 +1241,14 @@ export class VolumioHub {
     }
   }
 
-  async replaceAndPlay(record, item, what) {
+  async replaceAndPlay(record, item, what, { catalog = false } = {}) {
     try {
-      await record.client.replaceAndPlay(item);
+      await record.client.replaceAndPlay(
+        item,
+        catalog ? { timeoutMs: CATALOG_TIMEOUT_MS } : undefined,
+      );
     } catch (err) {
-      throw await this.commandError(record, err);
+      throw await (catalog ? this.catalogError(record, err) : this.commandError(record, err));
     }
     logger.info(`${this.label(record)}: ${what}`);
     this.afterCommand(record);

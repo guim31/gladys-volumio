@@ -193,10 +193,19 @@ export class FakeVolumio {
         return json(this.command(query));
       case 'POST /api/v1/replaceAndPlay':
         return json(this.replaceAndPlay(body));
-      case 'POST /api/v1/addToQueue':
-        this.queue.push(...(Array.isArray(body) ? body : [body]).flatMap((item) => explode(item)));
+      case 'POST /api/v1/addToQueue': {
+        const added = (Array.isArray(body) ? body : [body]).flatMap((item) => explode(item));
+        // CorePlayQueue.addQueueItems: items equal to the end of the queue are not added again.
+        const tail = this.queue.slice(-added.length).map((entry) => entry.uri);
+        const same =
+          this.queue.length >= added.length &&
+          tail.join('\n') === added.map((entry) => entry.uri).join('\n');
+        if (!same) {
+          this.queue.push(...added);
+        }
         this.changed();
         return json({ response: 'success' });
+      }
       case 'GET /albumart':
         return { status: 200, body: this.art, type: 'image/png' };
       default:
@@ -509,6 +518,10 @@ export function createNetwork(players) {
       const player = byHost().get(host);
       if (!player || !player.online) {
         throw new TypeError('fetch failed', { cause: { code: 'EHOSTUNREACH' } });
+      }
+      if (player.stall?.has(new URL(url).pathname)) {
+        // An answer that never comes in time (AbortSignal.timeout).
+        throw new DOMException('The operation timed out.', 'TimeoutError');
       }
       const body = typeof init.body === 'string' ? JSON.parse(init.body) : undefined;
       const answer = player.handle(init.method ?? 'GET', url, body);

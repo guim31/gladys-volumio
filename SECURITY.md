@@ -32,7 +32,9 @@ In scope: the code of this repository and the Docker image it publishes.
 
 What the integration handles:
 
-- **Stored**: nothing in `/data`. The configuration (player addresses, real
+- **Stored**: in `/data`, only `media-ids.json`, the library items whose
+  identifier is too long for Gladys (service and URI of a track or an album,
+  kept for the scenes that play them). The configuration (player addresses, real
   time, notification volume and length, language) lives in Gladys; the
   address of each player is also kept in its device parameters.
 - **Secrets**: none. The Volumio API has no account and no password. An
@@ -41,8 +43,8 @@ What the integration handles:
 - **Network**: plain HTTP and WebSocket to the players on the local network
   (port 3000 by default), the mDNS scan relayed by the Gladys core, and the
   album covers Volumio points to (on the player, or on the Internet for web
-  radios and streaming services), downloaded at most 300 KB each for the
-  dashboard widget. The integration sends no command a user, a scene or a
+  radios and streaming services), downloaded at most 10 MB each for the
+  dashboard widget and the Music box (made smaller in the container). The integration sends no command a user, a scene or a
   widget did not ask for, besides putting the music back after a
   notification. An address played by a scene action must be `http(s)`; it is
   fetched by the player, not by the integration.

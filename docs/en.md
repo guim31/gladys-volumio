@@ -185,8 +185,6 @@ starts, pauses or jumps, and the Music box moves the progress bar on its own.
 - **Play next** while shuffle is on: Volumio picks the next track at random, the added items may not come next.
 - Playing an item that no longer exists (a scene kept for months, a file removed) empties the queue: Volumio
   clears it before it finds out. Gladys reports it.
-- An item whose identifier would be longer than 512 characters (a very deep folder) is kept by the integration
-  until it restarts: a scene made of such an item stops working after a restart.
 - A seek right at the start of a track can be ignored by Volumio 2 (seen on a test bench).
 - Gladys 5.2 does not pass the volume of its "play a notification" scene action to external integrations: the
   notification volume of the configuration applies.

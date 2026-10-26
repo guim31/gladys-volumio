@@ -193,8 +193,6 @@ cuando empieza, se pausa o salta, y la caja Música mueve la barra de progreso p
   azar, los elementos añadidos no suenan necesariamente después.
 - Reproducir un elemento que ya no existe (una escena guardada durante meses, un archivo eliminado) vacía la
   cola: Volumio la vacía antes de darse cuenta. Gladys lo indica.
-- Un elemento cuyo identificador superaría los 512 caracteres (una carpeta muy profunda) lo conserva la
-  integración solo hasta que se reinicia: una escena con ese elemento deja de funcionar tras un reinicio.
 - Volumio 2 puede ignorar un salto justo al principio de una pista (visto en un banco de pruebas).
 - Gladys 5.2 no transmite a las integraciones externas el volumen de su acción de escena «reproducir una
   notificación»: se aplica el volumen de las notificaciones de la configuración.

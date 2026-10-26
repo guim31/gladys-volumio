@@ -15,9 +15,16 @@ import {
   validateMediaItems,
 } from '@gladysassistant/integration-sdk';
 import { imageInfo } from '../src/artwork-resize.js';
-import { kindOf, mediaId, parseId } from '../src/catalog.js';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { PLAYLIST_CHECK, QUEUE_CHECK, idStore, kindOf, mediaId, parseId } from '../src/catalog.js';
 import { LIBRARY, explode } from './helpers/fakeVolumio.js';
 import { FakeVolumio, createAll, createWorld, ids, settle } from './helpers/world.js';
+
+// The queue checks wait for Volumio in real time: short in the tests.
+QUEUE_CHECK.intervalMs = 5;
+PLAYLIST_CHECK.intervalMs = 5;
 
 const ALBUM = 'albums://Alpha%20Band/First%20Light';
 const PLAYLIST = 'playlists/Apéro du soir';
@@ -89,7 +96,7 @@ test('what plays is published once per change; stopped keeps the track, an empty
   assert.equal(state(w, 'artist'), 'Alpha Band');
   assert.equal(state(w, 'album'), 'First Light');
   assert.equal(state(w, 'duration'), 25);
-  assert.equal(state(w, 'position'), 2); // seek 1543 ms
+  assert.equal(state(w, 'position'), 2); // seek 1502 ms
   assert.equal(state(w, 'shuffle'), 1);
   assert.equal(state(w, 'repeat'), MUSIC_REPEAT_MODE.OFF);
   assert.equal(state(w, 'mute'), 1);
@@ -431,9 +438,122 @@ test('ids: Volumio items, long ones hashed; kinds from types and URIs', () => {
     'album',
   );
   assert.equal(kindOf({ type: 'folder', uri: 'genres://Jazz' }).type, 'folder');
+  assert.equal(kindOf({ type: 'folder', uri: 'genres://Jazz/Miles%20Davis' }).type, 'artist');
   assert.equal(kindOf({ type: 'folder', uri: 'music-library/USB' }).playable, false);
   assert.equal(kindOf({ type: 'radio-category', uri: 'radio/selection' }).type, 'folder');
   assert.equal(kindOf({ type: 'folder', uri: 'spotify:album:123' }).type, 'album');
   assert.equal(kindOf({ type: 'streaming-category', uri: 'spotify/playlists' }).type, 'folder');
   assert.equal(kindOf({ type: 'folder', uri: 'spotify:playlist:9' }).type, 'playlist');
+});
+
+test('two "play next" at once: one after the other, both in place', async (t) => {
+  const w = await world(t, { players: [benchPlayer()] });
+  const [living] = w.players;
+  living.queue = explode({ uri: ALBUM });
+  living.load(0);
+  const next = (uri) =>
+    w.fake.musicPlay(device(w), { id: mediaId({ service: 'mpd', uri }), type: 'track' }, 'next');
+  const acks = await Promise.all([
+    next('music-library/Loose/cafe.mp3'),
+    next('music-library/Loose/doorbell.mp3'),
+  ]);
+  assert.deepEqual(
+    acks.map((ack) => ack.success),
+    [true, true],
+  );
+  assert.deepEqual(queueNames(living), ['Dawn 1', 'doorbell.mp3', 'cafe.mp3', 'Dawn 2', 'Dawn 3']);
+});
+
+test('adding the last track of the queue again: Volumio refuses, said plainly', async (t) => {
+  const w = await world(t, { players: [benchPlayer()] });
+  const [living] = w.players;
+  const last = living.queue.at(-1);
+  const ack = await w.fake.musicPlay(
+    device(w),
+    { id: mediaId({ service: last.service, uri: last.uri }), type: 'track' },
+    'append',
+  );
+  assert.equal(ack.success, false);
+  assert.match(ack.error, /Already at the end of the queue/);
+});
+
+test('a playlist that fills the queue late is not reported as missing', async (t) => {
+  const w = await world(t, { players: [benchPlayer()] });
+  const [living] = w.players;
+  living.playlists = { Late: [] }; // listed, but nothing queued in time
+  const ack = await w.fake.musicPlay(
+    device(w),
+    {
+      id: mediaId({ service: 'mpd', uri: 'playlists/Late', title: 'Late' }, true),
+      type: 'playlist',
+    },
+    'replace',
+  );
+  assert.equal(ack.success, true, ack.error);
+});
+
+test('an URI containing playlists/ is queued, never taken for a playlist', async (t) => {
+  const w = await world(t, { players: [benchPlayer()] });
+  const [living] = w.players;
+  const uri = 'music-library/Mix/playlists/song.flac';
+  const ack = await w.fake.musicPlay(
+    device(w),
+    { id: mediaId({ service: 'mpd', uri }), type: 'track' },
+    'replace',
+  );
+  assert.equal(ack.success, true, ack.error);
+  assert.deepEqual(
+    living.queue.map((entry) => entry.uri),
+    [uri],
+  );
+  assert.ok(!living.commands.some((c) => c.startsWith('playplaylist')));
+  assert.deepEqual(living.commands.slice(-2), ['clearQueue', 'play 0']);
+});
+
+test('a slow answer fails the panel, not the player', async (t) => {
+  const w = await world(t, { players: [benchPlayer()] });
+  const [living] = w.players;
+  living.stall = new Set(['/api/v1/browse']);
+  const ack = await w.fake.musicBrowse(device(w));
+  assert.equal(ack.success, false);
+  assert.match(ack.error, /took too long/);
+  assert.equal(w.hub.records.get(living.id).reachable, true);
+  assert.equal(state(w, 'playback_state'), MUSIC_PLAYBACK_STATE.PLAYING);
+});
+
+test('a notification does not show as a track: only the playback state moves', async (t) => {
+  const w = await world(t, { players: [benchPlayer()] });
+  const [living] = w.players;
+  const titles = published(w, 'title');
+  const record = w.hub.records.get(living.id);
+  await w.hub.notify(record, 'http://192.0.2.9/doorbell.mp3', { resume: true });
+  while (record.notifying) {
+    await record.notifying.catch(() => {});
+  }
+  await settle();
+  assert.equal(published(w, 'title'), titles);
+  assert.equal(state(w, 'title'), 'Dawn 1');
+});
+
+test('queue rows of one track queued twice get distinct ids', async (t) => {
+  const w = await world(t, { players: [benchPlayer()] });
+  const [living] = w.players;
+  living.queue.push(structuredClone(living.queue[0]));
+  const items = valid(await w.fake.musicQueueGet(device(w)));
+  assert.equal(new Set(items.map((item) => item.id)).size, items.length);
+  assert.equal(items.at(-1).id, `queue:${items.length - 1}`);
+});
+
+test('long ids are kept in /data, for the scenes after a restart', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'volumio-ids-'));
+  const saved = idStore.dir;
+  idStore.dir = dir;
+  t.after(() => {
+    idStore.dir = saved;
+    rmSync(dir, { recursive: true, force: true });
+  });
+  const uri = `music-library/${'b'.repeat(600)}.flac`;
+  const id = mediaId({ service: 'mpd', uri });
+  const file = JSON.parse(readFileSync(join(dir, 'media-ids.json'), 'utf8'));
+  assert.deepEqual(file[id], ['mpd', uri]);
 });

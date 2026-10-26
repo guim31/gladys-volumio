@@ -128,6 +128,18 @@ export const ACTION_TEXT = {
     de: 'Am Ende der Warteschlange hinzugefügt: Der Player hat es nicht hinter den aktuellen Titel verschoben.',
     es: 'Añadido al final de la cola: el reproductor no lo ha movido después de la pista actual.',
   },
+  alreadyAtEnd: {
+    en: 'Already at the end of the queue: Volumio does not add it again right after itself.',
+    fr: "Déjà en fin de file : Volumio ne l'ajoute pas une seconde fois juste après lui-même.",
+    de: 'Schon am Ende der Warteschlange: Volumio fügt es nicht direkt hinter sich selbst noch einmal hinzu.',
+    es: 'Ya está al final de la cola: Volumio no lo añade otra vez justo detrás de sí mismo.',
+  },
+  tooSlow: {
+    en: 'took too long to answer (a large library or a slow source?)',
+    fr: 'a mis trop de temps à répondre (grosse bibliothèque ou source lente ?)',
+    de: 'hat zu lange zum Antworten gebraucht (große Bibliothek oder langsame Quelle?)',
+    es: 'ha tardado demasiado en responder (¿biblioteca grande o fuente lenta?)',
+  },
   notSeekable: {
     en: 'A web radio cannot be moved forward or back.',
     fr: 'Une webradio ne peut pas être avancée ni reculée.',

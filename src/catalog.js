@@ -27,11 +27,12 @@
 // artwork of a web radio or a playlist (what Volumio needs to play them).
 // They are what a scene keeps: they must stay stable, and a library URI is
 // (albums://Artist/Album, music-library/<path>). An id over 512 characters
-// is replaced by a hash, remembered in memory (scenes made of such an item
-// need the integration not to restart: documented).
+// is replaced by a hash, remembered in `/data/media-ids.json` (scenes).
 // -----------------------------------------------------------------------------
 
 import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { MUSIC_MEDIA_TYPES, createLogger } from '@gladysassistant/integration-sdk';
 import { ArtworkError, MAX_ARTWORK_DOWNLOAD, prepareArtwork } from './artwork-resize.js';
 import { ACTION_TEXT, pick } from './texts.js';
@@ -44,7 +45,10 @@ export const MAX_ID_LENGTH = 512;
 export const MAX_ADDED = 500;
 // The queue is checked this long after an addition (Volumio explodes an
 // album or an artist before answering, a playlist after).
-export const QUEUE_CHECK = { tries: 10, intervalMs: 300 };
+export const QUEUE_CHECK = { tries: 8, intervalMs: 250 };
+// A Volumio playlist fills the queue after replaceAndPlay answered (track by
+// track): its name was checked, so the wait is longer and never an error.
+export const PLAYLIST_CHECK = { tries: 12, intervalMs: 250 };
 // Artworks already made small enough, by key (the core caches one hour).
 const PREPARED_ARTWORKS = 40;
 const ARTWORK_TIMEOUT_MS = 8000;
@@ -65,8 +69,45 @@ const userError = (hub, text, ...args) => {
 
 // --- Ids ---------------------------------------------------------------------
 
-/** Long ids by their hash (see the header). */
+/**
+ * Long ids by their hash (see the header), kept in `/data` so that a scene
+ * made of such an item survives a restart. Writing may fail (tests, a
+ * missing volume): the ids then live as long as the container.
+ */
 const hashedIds = new Map();
+export const idStore = {
+  dir: process.env.GLADYS_INTEGRATION_DATA_DIR ?? '/data',
+  loaded: false,
+  get file() {
+    return join(this.dir, 'media-ids.json');
+  },
+  load() {
+    if (this.loaded) {
+      return;
+    }
+    this.loaded = true;
+    try {
+      const saved = JSON.parse(readFileSync(this.file, 'utf8'));
+      for (const [id, value] of Object.entries(saved)) {
+        if (!hashedIds.has(id) && Array.isArray(value)) {
+          hashedIds.set(id, value);
+        }
+      }
+    } catch {
+      // nothing saved yet
+    }
+  },
+  save() {
+    try {
+      mkdirSync(this.dir, { recursive: true });
+      const tmp = `${this.file}.tmp`;
+      writeFileSync(tmp, JSON.stringify(Object.fromEntries(hashedIds)));
+      renameSync(tmp, this.file);
+    } catch (err) {
+      logger.debug(`Long media ids not saved: ${err.message}`);
+    }
+  },
+};
 
 /**
  * The MediaItem id of a Volumio item.
@@ -88,10 +129,15 @@ export function mediaId({ service, uri, title, albumart }, named = false) {
     }
   }
   const id = `h:${createHash('sha1').update(JSON.stringify(candidates[0])).digest('hex')}`;
+  idStore.load();
+  const known = hashedIds.has(id);
   hashedIds.delete(id);
   hashedIds.set(id, candidates[0]);
   while (hashedIds.size > HASHED_IDS) {
     hashedIds.delete(hashedIds.keys().next().value);
+  }
+  if (!known) {
+    idStore.save();
   }
   return id;
 }
@@ -100,6 +146,9 @@ export function mediaId({ service, uri, title, albumart }, named = false) {
 export function parseId(id) {
   if (typeof id !== 'string') {
     return null;
+  }
+  if (id.startsWith('h:')) {
+    idStore.load();
   }
   let value = hashedIds.get(id) ?? null;
   if (!value) {
@@ -131,6 +180,8 @@ const playlistName = (item) =>
   item.service === 'mpd' && item.uri.startsWith('playlists/') && !item.uri.includes('://')
     ? item.uri.slice('playlists/'.length)
     : null;
+
+const shortHash = (value) => createHash('sha1').update(value).digest('hex').slice(0, 12);
 
 const baseName = (uri) => {
   const parts = String(uri ?? '')
@@ -168,8 +219,9 @@ export function kindOf(raw) {
     if (library[1] === 'artists' && depth === 1) {
       return is(T.ARTIST, true, true);
     }
-    if (library[1] === 'genres' && depth === 1) {
-      return is(T.FOLDER, true, false);
+    if (library[1] === 'genres' && depth <= 2) {
+      // genres://G: a genre; genres://G/A: an artist of the genre.
+      return depth === 2 ? is(T.ARTIST, true, true) : is(T.FOLDER, true, false);
     }
     return depth === 0 ? is(T.FOLDER, true, false) : is(T.ALBUM, true, true);
   }
@@ -308,7 +360,7 @@ export async function browse(hub, device, { parentId = null, offset = 0, limit =
   const items = rows
     .slice(offset, offset + limit)
     .map((raw, index) =>
-      toMediaItem(hub, record, raw, `row:${parent?.uri ?? ''}:${offset + index}`),
+      toMediaItem(hub, record, raw, `row:${shortHash(parent?.uri ?? '')}:${offset + index}`),
     );
   return { items, total: rows.length };
 }
@@ -333,10 +385,13 @@ export async function queueGet(hub, device, { offset = 0, limit = 50 } = {}) {
   );
   const state = parseState(raw);
   const position = Number.isInteger(state.position) ? state.position : null;
+  // Stopped, Volumio keeps its current track ("Play" starts it again): it
+  // stays the current index, as the Music box keeps showing it.
   const currentIndex =
     position !== null && position >= 0 && position < queue.length ? position : null;
   // Volumio names a queued track `name` and types every entry `track`: a
   // web radio is told by its service. No row is ever dropped.
+  const seen = new Set();
   const items = queue.slice(offset, offset + limit).map((entry, index) => {
     const radio = entry?.service === 'webradio';
     const item = toMediaItem(
@@ -348,6 +403,11 @@ export async function queueGet(hub, device, { offset = 0, limit = 50 } = {}) {
     if (radio) {
       item.duration = null;
     }
+    // A track queued twice: one id per row (a row is played by its index).
+    if (seen.has(item.id)) {
+      item.id = `queue:${offset + index}`;
+    }
+    seen.add(item.id);
     return item;
   });
   return { items, currentIndex, total: queue.length };
@@ -363,7 +423,9 @@ export async function queuePlay(hub, device, index) {
   if (index >= queue.length) {
     throw userError(hub, ACTION_TEXT.notInQueue);
   }
-  await hub.command(record, 'play', { N: index }, `play queue item ${index}`);
+  await hub.queueTask(record, () =>
+    hub.command(record, 'play', { N: index }, `play queue item ${index}`),
+  );
 }
 
 /** onMusicPlay: replace the queue, or add after the current track / at the end. */
@@ -374,17 +436,21 @@ export async function play(hub, device, media, mode = 'replace') {
     throw userError(hub, ACTION_TEXT.unknownMedia);
   }
   const what = item.title || baseName(item.uri) || item.uri;
-  if (mode === 'replace') {
-    return replace(hub, record, item, what);
-  }
-  if (mode !== 'next' && mode !== 'append') {
+  if (!['replace', 'next', 'append'].includes(mode)) {
     throw new Error(`Unknown play mode ${mode}`);
   }
-  // Ask for the socket before anything is added: "next" cannot be done without it.
-  if (mode === 'next') {
-    return hub.withSocket(record, (socket) => enqueue(hub, record, item, what, socket));
-  }
-  return enqueue(hub, record, item, what, null);
+  // One change of the queue at a time per player: two "next" at once would
+  // count each other's items and move them twice.
+  return hub.queueTask(record, () => {
+    if (mode === 'replace') {
+      return replace(hub, record, item, what);
+    }
+    // Ask for the socket before anything is added: "next" cannot be done without it.
+    if (mode === 'next') {
+      return hub.withSocket(record, (socket) => enqueue(hub, record, item, what, socket));
+    }
+    return enqueue(hub, record, item, what, null);
+  });
 }
 
 /** What Volumio adds for an item (its `addToQueue` / `replaceAndPlay` body). */
@@ -422,8 +488,26 @@ async function replace(hub, record, item, what) {
   const body = volumioItem(item);
   if (name !== null) {
     body.title = name;
+  } else if (item.uri.includes('playlists/') && !item.uri.includes('://')) {
+    // replaceAndPlay takes any URI containing `playlists/` for a Volumio
+    // playlist and plays the playlist named like the item: queue it instead.
+    await hub.command(record, 'clearQueue', {}, 'queue cleared');
+    await hub.addToQueue(record, [body], `queued: ${what}`, { catalog: true });
+    const queue = await waitForQueue(hub, record, (entries) => entries.length > 0);
+    if (queue.length === 0) {
+      throw userError(hub, ACTION_TEXT.nothingToPlay);
+    }
+    await hub.command(record, 'play', { N: 0 }, `playing ${what}`);
+    return;
   }
-  await hub.replaceAndPlay(record, body, `playing ${what}`);
+  await hub.replaceAndPlay(record, body, `playing ${what}`, { catalog: true });
+  if (name !== null) {
+    const queue = await waitForQueue(hub, record, (entries) => entries.length > 0, PLAYLIST_CHECK);
+    if (queue.length === 0) {
+      logger.warn(`${hub.label(record)}: playlist ${name} not queued yet`);
+    }
+    return;
+  }
   const queue = await waitForQueue(hub, record, (entries) => entries.length > 0);
   if (queue.length === 0) {
     throw userError(hub, ACTION_TEXT.nothingToPlay);
@@ -437,18 +521,27 @@ async function replace(hub, record, item, what) {
  */
 async function enqueue(hub, record, item, what, socket) {
   const items = await itemsToAdd(hub, record, item);
-  const [before, raw] = await hub.catalogRead(record, 'queue', (client) =>
-    Promise.all([client.getQueue(), client.getState()]),
-  );
-  const state = parseState(raw);
-  await hub.addToQueue(record, items, `${socket ? 'next' : 'queued'}: ${what}`);
+  const before = await hub.catalogRead(record, 'queue', (client) => client.getQueue());
+  await hub.addToQueue(record, items, `${socket ? 'next' : 'queued'}: ${what}`, {
+    catalog: true,
+  });
   const after = await waitForQueue(hub, record, (queue) => queue.length > before.length);
   if (after.length <= before.length) {
-    throw userError(hub, ACTION_TEXT.nothingToPlay);
+    // Volumio adds nothing when the items equal the end of the queue
+    // (CorePlayQueue.addQueueItems), and answers "success".
+    const tail = after.at(-1)?.uri;
+    throw userError(
+      hub,
+      tail && items.some((entry) => entry.uri === tail)
+        ? ACTION_TEXT.alreadyAtEnd
+        : ACTION_TEXT.nothingToPlay,
+    );
   }
   if (!socket) {
     return;
   }
+  // The track playing now (it may have changed while the items were added).
+  const state = parseState(await hub.catalogRead(record, 'state', (client) => client.getState()));
   const current = Number.isInteger(state.position) ? state.position : -1;
   const added = after.length - before.length;
   const following = before.length - 1 - current;
@@ -500,15 +593,15 @@ async function itemsToAdd(hub, record, item) {
 }
 
 /** Read the queue until `done(queue)` (or the tries run out): the last one read. */
-async function waitForQueue(hub, record, done) {
+async function waitForQueue(hub, record, done, { tries, intervalMs } = QUEUE_CHECK) {
   return hub.catalogRead(record, 'queue', async (client) => {
     let queue = [];
-    for (let attempt = 0; attempt < QUEUE_CHECK.tries; attempt += 1) {
+    for (let attempt = 0; attempt < tries; attempt += 1) {
       queue = await client.getQueue();
       if (done(queue)) {
         break;
       }
-      await sleep(QUEUE_CHECK.intervalMs);
+      await sleep(intervalMs);
     }
     return queue;
   });

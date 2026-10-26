@@ -196,8 +196,6 @@ gesendet, wenn es beginnt, pausiert oder springt, und die Box Musik bewegt den F
   Elemente kommen nicht unbedingt als Nächstes.
 - Ein Element abzuspielen, das es nicht mehr gibt (eine monatelang gespeicherte Szene, eine gelöschte Datei),
   leert die Warteschlange: Volumio leert sie, bevor es das merkt. Gladys meldet es.
-- Ein Element, dessen Kennung länger als 512 Zeichen wäre (ein sehr tiefer Ordner), behält die Integration nur
-  bis zu ihrem Neustart: Eine Szene mit diesem Element funktioniert nach einem Neustart nicht mehr.
 - Ein Sprung direkt am Anfang eines Stücks kann von Volumio 2 ignoriert werden (auf einem Testaufbau
   gesehen).
 - Gladys 5.2 gibt die Lautstärke seiner Szenenaktion „Benachrichtigung abspielen“ nicht an externe
