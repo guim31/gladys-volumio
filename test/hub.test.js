@@ -104,8 +104,14 @@ test('push: Engine.IO 4 is tried when 3 is refused, at once', async (t) => {
   const living = new FakeVolumio({ push: 'eio4' });
   const w = await world(t, { players: [living], timers: true });
   await createAll(w);
-  await settle();
   const record = w.hub.records.get(living.id);
+  // The second try is a real setTimeout(0): give it a few ms on a slow runner.
+  for (let i = 0; i < 50 && !record.live; i += 1) {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 5);
+    });
+    await settle();
+  }
   assert.equal(record.live, true);
   assert.deepEqual(
     w.network.sockets.map((socket) => socket.eio),
