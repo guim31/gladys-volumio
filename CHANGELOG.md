@@ -10,6 +10,31 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- Gladys 5.3 music player: title, artist, album, artwork, duration, position
+  (writable: seek), shuffle, repeat (off, all, one) and mute on each player,
+  published together when they change. The dashboard Music box becomes a full
+  player.
+- Music panel of Gladys 5.3: the queue (a tap jumps), browsing the Volumio
+  sources (music library, artists, albums, genres, playlists, web radios,
+  plugins), search, and playing an item now, next or at the end of the queue;
+  the "Play music on a speaker" scene action of Gladys picks from it.
+- Covers larger than the 300 KB Gladys accepts are made smaller (plain
+  JavaScript, no image library), for the Music box and the widget.
+
+### Changed
+
+- Requires Gladys 5.3.0 (SDK 0.16).
+- Playback state is writable (0 pause, 1 play, 2 stop) and reads **2 when
+  stopped** instead of 0: a scene waiting for 0 no longer fires on a stop. It
+  is no longer kept in the history. Devices added before 1.1.0: click
+  **Update** on the player in the Discover tab to get the new features (the
+  existing ones keep their scenes and dashboards).
+- An unchanged value is no longer sent again every 6 hours (music features
+  never show "no recent value").
+- A player that stops answering is shown stopped.
+
 ## [1.0.1] - 2026-10-15
 
 ### Added

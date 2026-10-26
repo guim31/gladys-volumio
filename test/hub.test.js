@@ -68,7 +68,11 @@ test('each feature drives the player', async (t) => {
   assert.equal(w.fake.lastState(feature(w, living, 'volume').external_id), 64);
   assert.deepEqual(living.commands, ['pause', 'play', 'next', 'prev', 'volume 64']);
 
-  const refused = await w.fake.setValue(dev, feature(w, living, 'playback_state'), 1);
+  // Gladys 5.3: the playback state is the command too (2 = stop).
+  await set('playback_state', 2);
+  assert.equal(living.state.status, 'stop');
+  assert.equal(w.fake.lastState(feature(w, living, 'playback_state').external_id), PLAYBACK.IDLE);
+  const refused = await w.fake.setValue(dev, feature(w, living, 'playback_state'), 3);
   assert.equal(refused.success, false);
 });
 
@@ -100,8 +104,14 @@ test('push: Engine.IO 4 is tried when 3 is refused, at once', async (t) => {
   const living = new FakeVolumio({ push: 'eio4' });
   const w = await world(t, { players: [living], timers: true });
   await createAll(w);
-  await settle();
   const record = w.hub.records.get(living.id);
+  // The second try is a real setTimeout(0): give it a few ms on a slow runner.
+  for (let i = 0; i < 50 && !record.live; i += 1) {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 5);
+    });
+    await settle();
+  }
   assert.equal(record.live, true);
   assert.deepEqual(
     w.network.sockets.map((socket) => socket.eio),

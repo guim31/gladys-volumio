@@ -5,8 +5,10 @@
 This integration brings your **Volumio** network music players into Gladys: a Raspberry Pi with Volumio
 plugged into an amplifier or a DAC, a Volumio Primo, Rivo or Motivo. Each player becomes a Gladys music
 device: play, pause, previous and next track, volume, playback state, and "Broadcast a notification" for the
-text to speech and the sounds of your scenes. A dashboard widget shows what is playing, with its cover, and
-scene actions play a Volumio playlist, a favourite web radio or any stream address.
+text to speech and the sounds of your scenes. With Gladys 5.3, the **Music** box of the dashboard becomes a
+full player for it: cover, title, progress bar, shuffle, repeat, mute, the queue, and the search and browsing
+of the whole Volumio library. A dashboard widget shows what is playing, and scene actions play a Volumio
+playlist, a favourite web radio or any stream address.
 
 Everything stays on your local network: the integration talks to the Volumio REST API and listens to the
 real-time updates Volumio sends to its own web interface. No account, no cloud.
@@ -19,7 +21,7 @@ This integration is not affiliated with Volumio.
 
 ## Requirements
 
-- Gladys Assistant **5.2.0** or later.
+- Gladys Assistant **5.3.0** or later.
 - A Volumio player (Volumio 2 or 3) on the same local network as Gladys, reachable on its port 3000
   (the default one).
 
@@ -55,14 +57,55 @@ Each Volumio player is one device, named as in Volumio, with these features:
 | Pause                    | music pause button      | Pauses. A web radio is stopped instead (a stream cannot be paused). |
 | Previous track           | music previous button   | Previous track of the queue.                                        |
 | Next track               | music next button       | Next track of the queue.                                            |
-| Playback state           | music playback state    | 1 while playing, 0 when paused or stopped. Kept in the history.     |
+| Playback state           | music playback state    | 1 playing, 0 paused, 2 stopped. Writing it plays, pauses or stops.  |
 | Broadcast a notification | music play notification | Plays a sound or a spoken message, then resumes what was playing.   |
+| Title                    | music title             | Title of the track (or what a web radio announces).                 |
+| Artist                   | music artist            | Artist of the track.                                                |
+| Album                    | music album             | Album of the track.                                                 |
+| Artwork                  | music artwork           | The cover, shown by the Music box.                                  |
+| Duration                 | music duration (s)      | Length of the track, 0 for a web radio.                             |
+| Position                 | music position (s)      | Where the track is; writing it seeks.                               |
+| Shuffle                  | music shuffle           | Random play of the queue, on or off.                                |
+| Repeat                   | music repeat            | 0 off, 1 the whole queue, 2 the current track.                      |
+| Mute                     | music mute              | Mutes the player, keeping its volume.                               |
 
 With these features, the player works with the **Music** box of the Gladys dashboard, and with the Gladys
 scene action that speaks a text on a speaker. A notification remembers the queue, the track, the position,
 the volume and the repeat mode, plays the sound at the notification volume, then puts everything back.
 
 The features are named in the language chosen in the configuration, when the device is added.
+
+## Gladys 5.3 music player
+
+Since Gladys 5.3, the **Music** box of the dashboard is a real player, and Volumio fills all of it:
+
+- the cover, the title, the artist and the album, a progress bar you can drag to seek, play and pause,
+  previous, next, shuffle, repeat (off, the queue, one track), mute and the volume;
+- the **queue** (list button): the tracks of the Volumio queue, the current one highlighted; a tap plays
+  another one;
+- **search and browse** (magnifier button): the search asks Volumio, which looks everywhere it can (music
+  library, web radios, the streaming plugins you installed); browsing starts with the sources of Volumio
+  (Music Library, Artists, Albums, Genres, Playlists, Web Radio, Favorites, Media Servers, your plugins). A tap
+  plays the item in place of the queue; the secondary gesture adds it after the current track or at the end of
+  the queue. An album, an artist or a playlist plays whole; a folder is opened, not played.
+
+The **Play music on a speaker** scene action of Gladys picks a playlist, an album, an artist, a web radio or a
+track in the same panel, and plays it when the scene runs.
+
+**A device added before version 1.1.0** keeps working as before, without the new features: open the
+**Discover** tab of the integration and click **Update** on the player (Gladys offers it because the features
+changed). The new features are added; the existing ones keep their scenes and dashboards. **Playback state**
+changes: it reads 2 instead of 0 when Volumio is stopped, and it is no longer kept in the history (Gladys keeps
+no history of music features).
+
+Covers come from Volumio (`/albumart`): the cover file of the album folder, or one found on the Internet by
+Volumio, or the logo of a web radio. Volumio sends a local cover as it is on disk (up to 5 MB) and Gladys shows
+a cover of **300 KB at most**: the integration makes a larger one smaller (a JPEG of 400 pixels at most). A
+track without cover shows the Volumio logo, as in Volumio.
+
+Two commands are not in the REST API of Volumio and go through its real-time channel (socket.io), opened for
+the command when **Real-time updates** is off: **repeat one track**, and **play next** (the items are added at
+the end of the queue, then moved after the current track).
 
 ## Dashboard widget
 
@@ -113,7 +156,8 @@ Volumio has no account and no quota: everything goes over the local network. The
 socket.io channel of Volumio (the one of its web interface) and reads the player once every 5 minutes as a
 safety net. When that channel is not available, it reads the player every 10 seconds while it plays and every
 minute otherwise. A player that does not answer is tried again after 15 seconds, then every minute. Only the
-players added to Gladys are read. An unchanged value is sent again to Gladys every 6 hours.
+players added to Gladys are read. Only changes are sent to Gladys: the position of the track is sent when it
+starts, pauses or jumps, and the Music box moves the progress bar on its own.
 
 ## Troubleshooting
 
@@ -124,15 +168,24 @@ players added to Gladys are read. An unchanged value is sent again to Gladys eve
   `http://<address>:3000/api/v1/getState` opens in a browser of the same network.
 - **A scene action says the playlist is not found**: press **List playlists and favourite radios** and copy
   the name shown.
-- **The widget shows no cover**: Gladys only accepts covers of 300 KB at most; larger ones are not shown.
+- **The widget or the Music box shows no cover**: the cover is not a PNG, JPEG or WebP image (an SVG icon of
+  Volumio), or it is larger than 10 MB.
+- **"Added at the end of the queue"** after **play next**: the player did not move the items after the current
+  track (real-time channel lost meanwhile); they stay at the end.
+- **The Music box has no new controls on an older device**: click **Update** on the player in the **Discover**
+  tab (see "Gladys 5.3 music player").
 - Set `LOG_LEVEL=debug` on the integration to see every read in its logs.
 
 ## Limitations
 
 - Developed without the hardware: the real-time channel (socket.io), the notifications and the resume are
-  tested against a simulated player, not a real Volumio.
-- Gladys has no music feature for mute, shuffle, repeat or the title: they live in the widget and in the
-  scene actions.
+  tested against a simulated player; the music player of Gladys 5.3 (browse, search, queue, play next, repeat
+  one, covers) against a real Volumio 2 running in Docker (x86 image, no sound card), not against Volumio 3 nor
+  a real device.
+- **Play next** while shuffle is on: Volumio picks the next track at random, the added items may not come next.
+- Playing an item that no longer exists (a scene kept for months, a file removed) empties the queue: Volumio
+  clears it before it finds out. Gladys reports it.
+- A seek right at the start of a track can be ignored by Volumio 2 (seen on a test bench).
 - Gladys 5.2 does not pass the volume of its "play a notification" scene action to external integrations: the
   notification volume of the configuration applies.
 - After a notification, a queue that was paused comes back without playing, from its first track.

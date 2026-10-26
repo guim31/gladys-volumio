@@ -5,9 +5,11 @@
 Diese Integration bringt deine **Volumio**-Netzwerkplayer in Gladys: einen Raspberry Pi mit Volumio an einem
 Verstärker oder DAC, einen Volumio Primo, Rivo oder Motivo. Jeder Player wird ein Musikgerät in Gladys:
 Wiedergabe, Pause, vorheriger und nächster Titel, Lautstärke, Wiedergabestatus und „Benachrichtigung senden“
-für die Sprachausgabe und die Töne deiner Szenen. Ein Widget im Dashboard zeigt, was gerade läuft, mit Cover,
-und Szenenaktionen spielen eine Volumio-Playlist, ein Lieblings-Webradio oder eine beliebige Stream-Adresse
-ab.
+für die Sprachausgabe und die Töne deiner Szenen. Mit Gladys 5.3 wird die Box **Musik** des Dashboards ein
+echter Player: Cover, Titel, Fortschrittsbalken, Zufallswiedergabe, Wiederholung, Stummschaltung, die
+Warteschlange sowie Suche und Durchsuchen der ganzen Volumio-Bibliothek. Ein Widget im Dashboard zeigt, was
+gerade läuft, und Szenenaktionen spielen eine Volumio-Playlist, ein Lieblings-Webradio oder eine beliebige
+Stream-Adresse ab.
 
 Alles bleibt in deinem lokalen Netzwerk: Die Integration spricht mit der REST-API von Volumio und hört auf die
 Echtzeit-Aktualisierungen, die Volumio an seine eigene Weboberfläche schickt. Kein Konto, keine Cloud.
@@ -20,7 +22,7 @@ Diese Integration steht in keiner Verbindung zu Volumio.
 
 ## Voraussetzungen
 
-- Gladys Assistant **5.2.0** oder neuer.
+- Gladys Assistant **5.3.0** oder neuer.
 - Ein Volumio-Player (Volumio 2 oder 3) im selben lokalen Netzwerk wie Gladys, erreichbar über seinen Port
   3000 (der Standard).
 
@@ -57,8 +59,17 @@ Jeder Volumio-Player ist ein Gerät, benannt wie in Volumio, mit diesen Funktion
 | Pause                   | Musik: Pause                 | Pausiert. Ein Webradio wird stattdessen gestoppt (ein Stream lässt sich nicht pausieren). |
 | Vorheriger Titel        | Musik: Vorheriger Titel      | Vorheriger Titel der Warteschlange.                                                       |
 | Nächster Titel          | Musik: Nächster Titel        | Nächster Titel der Warteschlange.                                                         |
-| Wiedergabestatus        | Musik: Wiedergabestatus      | 1 während der Wiedergabe, 0 bei Pause oder Stopp. Wird im Verlauf gespeichert.            |
+| Wiedergabestatus        | Musik: Wiedergabestatus      | 1 Wiedergabe, 0 Pause, 2 gestoppt. Ein Schreiben spielt ab, pausiert oder stoppt.         |
 | Benachrichtigung senden | Benachrichtigung senden      | Spielt einen Ton oder eine gesprochene Nachricht ab und setzt danach fort, was lief.      |
+| Titel                   | Musik: Titel                 | Titel des Stücks (oder was ein Webradio ansagt).                                          |
+| Künstler                | Musik: Künstler              | Künstler des Stücks.                                                                      |
+| Album                   | Musik: Album                 | Album des Stücks.                                                                         |
+| Cover                   | Musik: Cover                 | Das Cover, angezeigt von der Box Musik.                                                   |
+| Dauer                   | Musik: Dauer (s)             | Länge des Stücks, 0 bei einem Webradio.                                                   |
+| Position                | Musik: Position (s)          | Wo das Stück gerade ist; ein Schreiben springt dorthin.                                   |
+| Zufallswiedergabe       | Musik: Zufallswiedergabe     | Zufällige Wiedergabe der Warteschlange, an oder aus.                                      |
+| Wiederholung            | Musik: Wiederholung          | 0 aus, 1 die ganze Warteschlange, 2 das aktuelle Stück.                                   |
+| Stummschaltung          | Musik: Stummschaltung        | Schaltet den Player stumm und behält seine Lautstärke.                                    |
 
 Mit diesen Funktionen arbeitet der Player mit der Box **Musik** des Gladys-Dashboards und mit der
 Szenenaktion von Gladys, die einen Text auf einem Lautsprecher spricht. Eine Benachrichtigung merkt sich die
@@ -66,6 +77,41 @@ Warteschlange, den Titel, die Position, die Lautstärke und das Wiederholen, spi
 der Benachrichtigungen und stellt danach alles wieder her.
 
 Die Funktionen werden beim Hinzufügen des Geräts in der Sprache benannt, die in der Konfiguration gewählt ist.
+
+## Musik-Player von Gladys 5.3
+
+Seit Gladys 5.3 ist die Box **Musik** des Dashboards ein echter Player, und Volumio füllt sie ganz aus:
+
+- Cover, Titel, Künstler und Album, ein Fortschrittsbalken, den du zum Springen ziehen kannst, Wiedergabe und
+  Pause, zurück, weiter, Zufallswiedergabe, Wiederholung (aus, die Warteschlange, ein Stück), Stummschaltung
+  und die Lautstärke;
+- die **Warteschlange** (Listen-Schaltfläche): die Stücke der Volumio-Warteschlange, das aktuelle
+  hervorgehoben; ein Tippen spielt ein anderes;
+- **Suchen und Durchsuchen** (Lupen-Schaltfläche): Die Suche fragt Volumio, das überall sucht, wo es kann
+  (Bibliothek, Webradios, installierte Streaming-Plugins); das Durchsuchen beginnt mit den Quellen von Volumio
+  (Music Library, Artists, Albums, Genres, Playlists, Web Radio, Favorites, Media Servers, deine Plugins, in der
+  Sprache von Volumio). Ein Tippen spielt das Element anstelle der Warteschlange; die zweite Geste fügt es nach
+  dem aktuellen Stück oder am Ende der Warteschlange ein. Ein Album, ein Künstler oder eine Playlist wird ganz
+  gespielt; ein Ordner wird geöffnet, nicht gespielt.
+
+Die Szenenaktion **Musik auf einem Lautsprecher abspielen** von Gladys wählt eine Playlist, ein Album, einen
+Künstler, ein Webradio oder ein Stück im selben Bereich und spielt es, wenn die Szene läuft.
+
+**Ein vor Version 1.1.0 hinzugefügtes Gerät** funktioniert weiter wie bisher, ohne die neuen Funktionen:
+Öffne den Tab **Entdecken** der Integration und klicke beim Player auf **Aktualisieren** (Gladys bietet es an,
+weil sich die Funktionen geändert haben). Die neuen Funktionen kommen hinzu; die bisherigen behalten ihre
+Szenen und Dashboards. **Wiedergabestatus** ändert sich: Er ist 2 statt 0, wenn Volumio gestoppt ist, und wird
+nicht mehr im Verlauf gespeichert (Gladys speichert keinen Verlauf von Musikfunktionen).
+
+Die Cover kommen von Volumio (`/albumart`): die Cover-Datei im Albumordner, ein von Volumio im Internet
+gefundenes Cover oder das Logo eines Webradios. Volumio sendet ein lokales Cover so, wie es auf der Festplatte
+liegt (bis 5 MB), und Gladys zeigt ein Cover von **höchstens 300 KB**: Die Integration verkleinert ein größeres
+(ein JPEG von höchstens 400 Pixeln). Ein Stück ohne Cover zeigt das Volumio-Logo, wie in Volumio.
+
+Zwei Befehle gibt es nicht in der REST-API von Volumio; sie laufen über seinen Echtzeit-Kanal (socket.io), der
+für den Befehl geöffnet wird, wenn **Echtzeit-Updates** aus ist: **ein Stück wiederholen** und **als Nächstes
+spielen** (die Elemente werden am Ende der Warteschlange hinzugefügt und dann hinter das aktuelle Stück
+verschoben).
 
 ## Dashboard-Widget
 
@@ -120,8 +166,8 @@ Volumio hat weder Konto noch Kontingent: Alles läuft über das lokale Netzwerk.
 socket.io-Kanal von Volumio (den seiner Weboberfläche) und liest den Player zur Sicherheit alle 5 Minuten.
 Ist dieser Kanal nicht verfügbar, liest sie den Player während der Wiedergabe alle 10 Sekunden und sonst jede
 Minute. Ein Player, der nicht antwortet, wird nach 15 Sekunden erneut versucht, dann jede Minute. Nur die zu
-Gladys hinzugefügten Player werden gelesen. Ein unveränderter Wert wird alle 6 Stunden erneut an Gladys
-gesendet.
+Gladys hinzugefügten Player werden gelesen. Nur Änderungen gehen an Gladys: Die Position des Stücks wird
+gesendet, wenn es beginnt, pausiert oder springt, und die Box Musik bewegt den Fortschrittsbalken selbst.
 
 ## Fehlerbehebung
 
@@ -132,15 +178,26 @@ gesendet.
   `http://<Adresse>:3000/api/v1/getState` in einem Browser im selben Netzwerk öffnet.
 - **Eine Szenenaktion meldet, dass die Playlist nicht gefunden wurde**: Drücke **Playlists und
   Lieblings-Webradios anzeigen** und kopiere den angezeigten Namen.
-- **Das Widget zeigt kein Cover**: Gladys nimmt nur Cover bis 300 KB an; größere werden nicht angezeigt.
+- **Das Widget oder die Box Musik zeigt kein Cover**: Das Cover ist kein PNG-, JPEG- oder WebP-Bild (ein
+  SVG-Symbol von Volumio) oder größer als 10 MB.
+- **„Am Ende der Warteschlange hinzugefügt“** nach **als Nächstes spielen**: Der Player hat die Elemente nicht
+  hinter das aktuelle Stück verschoben (Echtzeit-Kanal zwischendurch verloren); sie bleiben am Ende.
+- **Die Box Musik hat bei einem älteren Gerät keine neuen Bedienelemente**: Klicke im Tab **Entdecken** beim
+  Player auf **Aktualisieren** (siehe „Musik-Player von Gladys 5.3“).
 - Setze `LOG_LEVEL=debug` für die Integration, um jedes Lesen in ihren Protokollen zu sehen.
 
 ## Einschränkungen
 
 - Ohne die Hardware entwickelt: Der Echtzeit-Kanal (socket.io), die Benachrichtigungen und das Fortsetzen
-  wurden gegen einen simulierten Player getestet, nicht gegen ein echtes Volumio.
-- Gladys hat keine Musikfunktion für Stummschaltung, Zufallswiedergabe, Wiederholen oder den Titel: Diese
-  stehen im Widget und in den Szenenaktionen.
+  wurden gegen einen simulierten Player getestet; der Musik-Player von Gladys 5.3 (Durchsuchen, Suche,
+  Warteschlange, als Nächstes spielen, ein Stück wiederholen, Cover) gegen ein echtes Volumio 2 in Docker
+  (x86-Image, ohne Soundkarte), weder gegen Volumio 3 noch auf einem echten Gerät.
+- **Als Nächstes spielen** bei Zufallswiedergabe: Volumio wählt das nächste Stück zufällig, die hinzugefügten
+  Elemente kommen nicht unbedingt als Nächstes.
+- Ein Element abzuspielen, das es nicht mehr gibt (eine monatelang gespeicherte Szene, eine gelöschte Datei),
+  leert die Warteschlange: Volumio leert sie, bevor es das merkt. Gladys meldet es.
+- Ein Sprung direkt am Anfang eines Stücks kann von Volumio 2 ignoriert werden (auf einem Testaufbau
+  gesehen).
 - Gladys 5.2 gibt die Lautstärke seiner Szenenaktion „Benachrichtigung abspielen“ nicht an externe
   Integrationen weiter: Es gilt die Lautstärke der Benachrichtigungen aus der Konfiguration.
 - Nach einer Benachrichtigung kommt eine pausierte Warteschlange zurück, ohne zu spielen, ab ihrem ersten

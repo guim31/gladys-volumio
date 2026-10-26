@@ -145,9 +145,11 @@ test('a player is a music player for the core: the couples its music box reads',
     ]) {
       assert.ok(types.includes(type), type);
     }
+    // Writable since Gladys 5.3: 0 pause, 1 play, 2 stop, confirmed by the player.
     const state = device.features.find((feature) => feature.type === 'playback_state');
-    assert.equal(state.read_only, true);
-    assert.deepEqual([state.min, state.max], [0, 1]);
+    assert.equal(state.read_only, false);
+    assert.equal(state.has_feedback, true);
+    assert.deepEqual([state.min, state.max], [0, 2]);
   } finally {
     await world.app.stop();
   }

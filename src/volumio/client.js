@@ -7,6 +7,8 @@
 // or `{ "error": ... }` in the body: both are turned into a REFUSED error.
 // -----------------------------------------------------------------------------
 
+import { ArtworkError, readLimited } from '../artwork-resize.js';
+
 export const ERROR_KINDS = Object.freeze({
   UNREACHABLE: 'unreachable', // no answer: address, network, player off
   HTTP: 'http', // an HTTP status other than 200
@@ -25,6 +27,8 @@ export class VolumioError extends Error {
 export const REQUEST_TIMEOUT_MS = 5000;
 // What a command may take: replaceAndPlay resolves a web radio first.
 export const COMMAND_TIMEOUT_MS = 10_000;
+// The music panel: Gladys gives up after 10 s for the whole operation.
+export const CATALOG_TIMEOUT_MS = 7_000;
 
 export class VolumioClient {
   /**
@@ -61,8 +65,12 @@ export class VolumioClient {
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (err) {
-      const reason = err?.name === 'TimeoutError' ? 'no answer' : (err?.cause?.code ?? err.message);
-      throw new VolumioError(ERROR_KINDS.UNREACHABLE, `${this.host}: ${reason}`);
+      const timeout = err?.name === 'TimeoutError';
+      const reason = timeout ? 'no answer' : (err?.cause?.code ?? err.message);
+      const error = new VolumioError(ERROR_KINDS.UNREACHABLE, `${this.host}: ${reason}`);
+      // A slow answer (a big library, a slow plugin) is not a player gone.
+      error.timeout = timeout;
+      throw error;
     }
     let text;
     try {
@@ -109,9 +117,30 @@ export class VolumioClient {
     return Array.isArray(data) ? data.filter((name) => typeof name === 'string' && name) : [];
   }
 
-  /** One level of the Volumio library (`radio/favourites`...): its `navigation`. */
+  /**
+   * One level of the Volumio library (`radio/favourites`, `albums://`...):
+   * its `navigation`; the root (sources) without `uri`.
+   *
+   * Volumio decodes the `uri` (and the search `query`) once more after the
+   * HTTP layer did (`decodeURIComponent` in its REST plugin): it is encoded
+   * twice, so the plugin receives the URI exactly as listed, the way the web
+   * interface sends it over socket.io (`artists://Gamma%20%26%20Co`, a path
+   * with a `%`).
+   */
   async browse(uri) {
-    const data = await this.request('browse', { query: { uri } });
+    const data = await this.request('browse', {
+      query: uri ? { uri: encodeURIComponent(uri) } : {},
+      timeoutMs: CATALOG_TIMEOUT_MS,
+    });
+    return data?.navigation ?? { lists: [] };
+  }
+
+  /** Search every source of the player: `navigation.lists`, one per kind and source. */
+  async search(query) {
+    const data = await this.request('search', {
+      query: { query: encodeURIComponent(query) },
+      timeoutMs: CATALOG_TIMEOUT_MS,
+    });
     return data?.navigation ?? { lists: [] };
   }
 
@@ -133,20 +162,20 @@ export class VolumioClient {
   }
 
   /** Empty the queue, add these items and play (`{ item }`, `{ list, index }` or one item). */
-  replaceAndPlay(payload) {
+  replaceAndPlay(payload, { timeoutMs = COMMAND_TIMEOUT_MS } = {}) {
     return this.request('replaceAndPlay', {
       method: 'POST',
       body: payload,
-      timeoutMs: COMMAND_TIMEOUT_MS,
+      timeoutMs,
     });
   }
 
   /** Add items at the end of the queue, without playing them. */
-  addToQueue(items) {
+  addToQueue(items, { timeoutMs = COMMAND_TIMEOUT_MS } = {}) {
     return this.request('addToQueue', {
       method: 'POST',
       body: items,
-      timeoutMs: COMMAND_TIMEOUT_MS,
+      timeoutMs,
     });
   }
 
@@ -166,7 +195,8 @@ export class VolumioClient {
   }
 
   /**
-   * Download an image, refused past `maxBytes` (album art for the widget).
+   * Download an image, refused past `maxBytes` (album art), read as a stream
+   * so a huge answer never sits in memory.
    * @returns {Promise<Buffer>}
    */
   async download(url, { maxBytes, timeoutMs = REQUEST_TIMEOUT_MS }) {
@@ -187,10 +217,13 @@ export class VolumioClient {
       await response.body?.cancel?.().catch(() => {});
       throw new VolumioError(ERROR_KINDS.INVALID, `album art: ${declared} bytes`);
     }
-    const bytes = Buffer.from(await response.arrayBuffer());
-    if (bytes.length > maxBytes) {
-      throw new VolumioError(ERROR_KINDS.INVALID, `album art: ${bytes.length} bytes`);
+    try {
+      return await readLimited(response.body, maxBytes);
+    } catch (err) {
+      throw new VolumioError(
+        err instanceof ArtworkError ? ERROR_KINDS.INVALID : ERROR_KINDS.UNREACHABLE,
+        `album art: ${err.message}`,
+      );
     }
-    return bytes;
   }
 }

@@ -1,9 +1,10 @@
 // -----------------------------------------------------------------------------
 // Album art for the widget. The core never fetches a third-party URL: the
 // content names an image key, the core asks onWidgetGetImage for its bytes
-// and refuses anything over 300 KB or 4096 px, or not PNG / JPEG / WebP. There
-// is no image library in the container (memory, image size): a cover that
-// does not fit as Volumio serves it is simply not shown.
+// and refuses anything over 300 KB or 4096 px, or not PNG / JPEG / WebP.
+// Volumio serves a local cover as it is on disk (up to 5 MB): a larger one is
+// made smaller in plain JavaScript (src/artwork-resize.js), anything else
+// (SVG icon, GIF) is not shown.
 //
 // The key derives from the URL (the core caches an image one hour by key),
 // and each URL is checked once: the widget only names a key whose bytes
@@ -12,8 +13,8 @@
 
 import { createHash } from 'node:crypto';
 import { validateWidgetImage } from '@gladysassistant/integration-sdk';
+import { MAX_ARTWORK_DOWNLOAD, prepareArtwork } from './artwork-resize.js';
 
-export const MAX_ART_BYTES = 300 * 1024;
 const MAX_ENTRIES = 30;
 // A cover that failed (not reachable, too big) is tried again after this.
 const RETRY_MS = 10 * 60_000;
@@ -47,8 +48,8 @@ export class ArtCache {
     }
     let base64;
     try {
-      const bytes = await client.download(url, { maxBytes: MAX_ART_BYTES });
-      const candidate = bytes.toString('base64');
+      const bytes = await client.download(url, { maxBytes: MAX_ARTWORK_DOWNLOAD });
+      const candidate = (await prepareArtwork(bytes)).toString('base64');
       base64 = validateWidgetImage(candidate).length === 0 ? candidate : null;
     } catch {
       base64 = null;

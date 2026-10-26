@@ -38,11 +38,13 @@ src/app.js                        every SDK handler -> the hub (also used by the
 src/hub.js                        players, discovery, reading timer, push channel, states, commands,
                                   notifications (play, wait, restore), "track changed" trigger, logs
 src/discovery.js                  mDNS results, zones of a player -> candidate addresses
-src/devices.js                    one music device per player: features, names (4 languages), states
+src/devices.js                    one music device per player: features, names (4 languages), nowPlaying()
+src/catalog.js                    Gladys 5.3 music panel: browse, search, queue, play (now/next/end), artwork
+src/artwork-resize.js             covers made small enough for the core, plain JS (copied from gladys-mopidy)
 src/volumio/client.js             REST client (getState, commands, replaceAndPlay...), errors by kind
 src/volumio/model.js              reading getState / getSystemInfo / browse / getQueue (pure)
 src/volumio/socket.js             socket.io client over Node's WebSocket (Engine.IO 3 and 4)
-src/art.js                        album covers for the widget, checked with validateWidgetImage
+src/art.js                        album covers for the widget, resized, checked with validateWidgetImage
 src/scenes.js                     scene action handlers (manifest `scene_actions`)
 src/widgets.js                    dashboard widget `now_playing` (manifest `widgets`)
 src/texts.js                      every user-facing text of the code, in en/fr/de/es
@@ -159,7 +161,7 @@ code de ce dépôt. Compléter ce fichier quand un nouveau piège est découvert
   plus (un widget, si) : prévoir un champ de config `language` si des textes partent du
   conteneur. Le superviseur injecte `TZ`, le fuseau de Gladys. La sandbox est limitée à 256 Mo.
 
-**Musique et notifications** (relevé sur gladys-volumio, cœur 5.2.1)
+**Musique et notifications** (relevé sur gladys-volumio, cœur 5.2.1 ; la 5.3 a changé la boîte Musique, voir plus bas)
 
 - La boîte **Musique** du tableau de bord ne propose que les appareils qui ont `music/play`, et lit
   `music/playback_state` sans garde : publier les deux. `PLAYING` = 1, `PAUSED` = 0, pas d'état
@@ -191,7 +193,8 @@ code de ce dépôt. Compléter ce fichier quand un nouveau piège est découvert
 
 **SDK 0.15 et journaux**
 
-- SDK `@gladysassistant/integration-sdk` **^0.15.0** (12/10/2026) : `DEVICE_POLL_FREQUENCIES`, faux
+- SDK **^0.16.0** depuis la 1.1.0 (Gladys 5.3, `publishNowPlaying`, gestionnaires musique). Avant :
+  SDK `@gladysassistant/integration-sdk` **^0.15.0** (12/10/2026) : `DEVICE_POLL_FREQUENCIES`, faux
   Gladys de test (`@gladysassistant/integration-sdk/testing`, à préférer à un faux maison),
   déduplication des états, `parseMdnsTxt`. Lire son README et son CHANGELOG.
 - **Journaux calmes** (demande de Guilhem, 13/10/2026) : rien au niveau info pour un cycle normal de
@@ -290,5 +293,36 @@ vérifiés contre de vrais serveurs socket.io 2.5 et 4.8. **Aucun lecteur réel 
   **accepte aussi `EIO=4`**, puis coupe faute des pings que le client devrait envoyer : essayer 3,
   puis 4 si refusé, et garder la version qui a tenu. Le client parle le protocole sur le WebSocket
   intégré de Node 22 (pas de dépendance `socket.io-client`).
-- Pochettes : `albumart` relatif au lecteur ou absolu (Internet). Sans bibliothèque d'image dans le
-  conteneur, une pochette de plus de 300 Ko n'est pas affichée.
+- Pochettes : `albumart` relatif au lecteur ou absolu (Internet). Volumio sert une pochette locale telle
+  qu'elle est sur le disque (jusqu'à 5 Mo ; au-delà, son logo de 51 Ko) : `src/artwork-resize.js` la réduit.
+  Sans pochette, `/albumart` rend le logo Volumio (JPEG, sans `content-type`) ; une ligne de dossier
+  (`icon=folder-o`) rend une icône SVG, refusée par le cœur.
+
+### Lecteur Musique de Gladys 5.3 (1.1.0, vérifié contre un vrai Volumio 2 en Docker)
+
+Banc : image communautaire `jbonjean/volumio` (Volumio2, commit 307f918, x86), `AUDIO_OUTPUT=null` (MPD sans
+carte son : lecture en temps réel, pas de volume, `volume: ""`), bibliothèque montée dans
+`/var/lib/mpd/music`, playlists = fichiers JSON dans `/data/playlist/`. Réponses gardées dans
+`test/fixtures/volumio/library-v2.json`.
+
+- Clés de fonctionnalités = types (`playback_state`, `volume`…) : convention `${device}:${type}` de
+  `publishNowPlaying`, pas de `featureExternalIds`. Tout passe par `publishNowPlaying` (volume et muet compris).
+- `browse` sans `uri` : les sources directement dans `navigation.lists` (`name`, `uri`, `plugin_name`) ;
+  sinon `navigation.lists[].items`, plusieurs listes par niveau (artiste : albums puis morceaux). Albums et
+  artistes ont le type `folder` : les distinguer par l'URI (`albums://A/B`, `artists://A`, `artists://A/B`).
+- **`uri` et `query` encodés deux fois** : le plugin REST refait `decodeURIComponent` après Express. Encodé
+  une seule fois, `artists://Gamma%20%26%20Co` arrive décodé et un chemin avec `%` fait une erreur.
+- `getQueue` nomme le titre `name` et type tout `track` (webradio comprise : la reconnaître à `service`).
+- `replaceAndPlay` (corps à plat `{ service, uri, title }`) vide la file d'abord et répond « success » même
+  pour une URI disparue : vérifier la file après. Une playlist Volumio (`playlists/<nom>`) se joue par son
+  **titre** (`playPlaylist`) ; `addToQueue` l'ignore (rien d'ajouté, « success ») : ajouter ses morceaux.
+- Pas de « lire ensuite » en REST ; `playNext` (socket.io) n'existe que depuis Volumio 3 de mai 2024 et Volumio
+  2 l'ignore en silence. Fait ici : `addToQueue` puis `moveQueue {from, to}` (socket.io, Volumio 2 et 3), en
+  déplaçant le plus petit bloc, puis vérification. En aléatoire, Volumio tire le suivant au hasard.
+- Répétition : `cmd=repeat&value=` remet toujours `repeatSingle` à false ; « un morceau » = socket.io
+  `setRepeat {value: true, repeatSingle: true}`. Un socket temporaire est ouvert pour ces commandes quand le
+  temps réel est désactivé.
+- `cmd=play&N=<index>` saute dans la file ; `seek` en secondes. Un seek juste au début d'un morceau peut être
+  ignoré par Volumio 2 (course au démarrage de MPD), pas après une seconde.
+- Arrêt : Volumio garde le morceau (`status: stop`, titre, `seek` non nul) → IDLE, textes gardés, position 0.
+  File vide : titres vides, `albumart: "/albumart"` (le logo) → tout vider.

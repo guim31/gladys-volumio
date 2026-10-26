@@ -1,14 +1,19 @@
 // -----------------------------------------------------------------------------
-// One Gladys device per Volumio player, with the music features of the core
-// (the couples its music dashboard box and its "play a notification" scene
-// action look for): volume, play, pause, previous, next, playback state,
-// play a notification.
+// One Gladys device per Volumio player, with the music features of the core:
+//   - volume, play, pause, previous, next, play a notification (1.0);
+//   - playback state: 1 playing, 0 paused, 2 stopped (MUSIC_PLAYBACK_STATE),
+//     writable since Gladys 5.3 (same external id as in 1.0, read-only then);
+//   - now playing (Gladys 5.3): title, artist, album, artwork (an image key
+//     served by src/catalog.js), duration and position (seconds, position
+//     writable = seek), shuffle (Volumio's random), repeat (off, all, one:
+//     Volumio's repeat + repeatSingle) and mute, all published together by
+//     publishNowPlaying (src/hub.js).
+//
+// Feature keys equal the feature types, so the external ids follow the
+// `${device}:${type}` default of publishNowPlaying: no featureExternalIds.
 //
 // Identity: the UUID Volumio gives the player (getSystemInfo, mDNS TXT
 // `UUID`): the address can change (DHCP), the device stays.
-//
-// What the core has no feature for (title, artist, album, source, cover,
-// mute, shuffle, repeat) is shown by the dashboard widget (src/widgets.js).
 //
 // Polling: published with `should_poll: true` every minute, but the core
 // cannot be trusted to poll (GladysAssistant/Gladys#3198): the hub reads the
@@ -19,8 +24,12 @@
 import {
   DEVICE_FEATURE_CATEGORIES,
   DEVICE_FEATURE_TYPES,
+  DEVICE_FEATURE_UNITS,
   DEVICE_POLL_FREQUENCIES,
+  MUSIC_PLAYBACK_STATE,
+  MUSIC_REPEAT_MODE,
 } from '@gladysassistant/integration-sdk';
+import { isStream } from './volumio/model.js';
 
 export const DEVICE_TYPE = 'player';
 export const HOST_PARAM = 'VOLUMIO_HOST';
@@ -35,10 +44,24 @@ export const FEATURE_KEYS = Object.freeze({
   NEXT: 'next',
   PLAYBACK_STATE: 'playback_state',
   PLAY_NOTIFICATION: 'play_notification',
+  // Gladys 5.3: the same as the feature types, the default of publishNowPlaying.
+  TITLE: 'title',
+  ARTIST: 'artist',
+  ALBUM: 'album',
+  ARTWORK: 'artwork',
+  DURATION: 'duration',
+  POSITION: 'position',
+  SHUFFLE: 'shuffle',
+  REPEAT: 'repeat',
+  MUTE: 'mute',
 });
 
 // Values of music/playback_state (MUSIC_PLAYBACK_STATE in the core).
-export const PLAYBACK = Object.freeze({ PLAYING: 1, PAUSED: 0 });
+export const PLAYBACK = Object.freeze({
+  PLAYING: MUSIC_PLAYBACK_STATE.PLAYING,
+  PAUSED: MUSIC_PLAYBACK_STATE.PAUSED,
+  IDLE: MUSIC_PLAYBACK_STATE.IDLE,
+});
 
 // Feature names, in the language chosen in the configuration (Gladys does not
 // tell a device integration the user's language), close to the core's own
@@ -52,6 +75,15 @@ export const NAMES = {
     [FEATURE_KEYS.NEXT]: 'Next track',
     [FEATURE_KEYS.PLAYBACK_STATE]: 'Playback state',
     [FEATURE_KEYS.PLAY_NOTIFICATION]: 'Broadcast a notification',
+    [FEATURE_KEYS.TITLE]: 'Title',
+    [FEATURE_KEYS.ARTIST]: 'Artist',
+    [FEATURE_KEYS.ALBUM]: 'Album',
+    [FEATURE_KEYS.ARTWORK]: 'Artwork',
+    [FEATURE_KEYS.DURATION]: 'Duration',
+    [FEATURE_KEYS.POSITION]: 'Position',
+    [FEATURE_KEYS.SHUFFLE]: 'Shuffle',
+    [FEATURE_KEYS.REPEAT]: 'Repeat',
+    [FEATURE_KEYS.MUTE]: 'Mute',
   },
   fr: {
     [FEATURE_KEYS.VOLUME]: 'Volume',
@@ -61,6 +93,15 @@ export const NAMES = {
     [FEATURE_KEYS.NEXT]: 'Piste suivante',
     [FEATURE_KEYS.PLAYBACK_STATE]: 'État de la lecture',
     [FEATURE_KEYS.PLAY_NOTIFICATION]: 'Diffuser une notification',
+    [FEATURE_KEYS.TITLE]: 'Titre',
+    [FEATURE_KEYS.ARTIST]: 'Artiste',
+    [FEATURE_KEYS.ALBUM]: 'Album',
+    [FEATURE_KEYS.ARTWORK]: 'Pochette',
+    [FEATURE_KEYS.DURATION]: 'Durée',
+    [FEATURE_KEYS.POSITION]: 'Position',
+    [FEATURE_KEYS.SHUFFLE]: 'Lecture aléatoire',
+    [FEATURE_KEYS.REPEAT]: 'Répétition',
+    [FEATURE_KEYS.MUTE]: 'Sourdine',
   },
   de: {
     [FEATURE_KEYS.VOLUME]: 'Lautstärke',
@@ -70,6 +111,15 @@ export const NAMES = {
     [FEATURE_KEYS.NEXT]: 'Nächster Titel',
     [FEATURE_KEYS.PLAYBACK_STATE]: 'Wiedergabestatus',
     [FEATURE_KEYS.PLAY_NOTIFICATION]: 'Benachrichtigung senden',
+    [FEATURE_KEYS.TITLE]: 'Titel',
+    [FEATURE_KEYS.ARTIST]: 'Künstler',
+    [FEATURE_KEYS.ALBUM]: 'Album',
+    [FEATURE_KEYS.ARTWORK]: 'Cover',
+    [FEATURE_KEYS.DURATION]: 'Dauer',
+    [FEATURE_KEYS.POSITION]: 'Position',
+    [FEATURE_KEYS.SHUFFLE]: 'Zufallswiedergabe',
+    [FEATURE_KEYS.REPEAT]: 'Wiederholung',
+    [FEATURE_KEYS.MUTE]: 'Stummschaltung',
   },
   es: {
     [FEATURE_KEYS.VOLUME]: 'Volumen',
@@ -79,6 +129,15 @@ export const NAMES = {
     [FEATURE_KEYS.NEXT]: 'Pista siguiente',
     [FEATURE_KEYS.PLAYBACK_STATE]: 'Estado de reproducción',
     [FEATURE_KEYS.PLAY_NOTIFICATION]: 'Difundir una notificación',
+    [FEATURE_KEYS.TITLE]: 'Título',
+    [FEATURE_KEYS.ARTIST]: 'Artista',
+    [FEATURE_KEYS.ALBUM]: 'Álbum',
+    [FEATURE_KEYS.ARTWORK]: 'Carátula',
+    [FEATURE_KEYS.DURATION]: 'Duración',
+    [FEATURE_KEYS.POSITION]: 'Posición',
+    [FEATURE_KEYS.SHUFFLE]: 'Reproducción aleatoria',
+    [FEATURE_KEYS.REPEAT]: 'Repetición',
+    [FEATURE_KEYS.MUTE]: 'Silencio',
   },
 };
 
@@ -94,34 +153,62 @@ const music = (type, extra) => ({
 // A button: the core sends 1. Same bounds as the core's own music services.
 const button = (type) => music(type, { min: 1, max: 1 });
 
+// Bound of the duration and the position (24 h: a long mix, an audiobook).
+export const MAX_SECONDS = 86_400;
+
+/** A writable music feature that Volumio confirms (push or the next read). */
+const control = (type, max, extra = {}) =>
+  music(type, { min: 0, max, has_feedback: true, ...extra });
+
+/** A read-only string feature (the core stores its value as a text). */
+const text = (type) =>
+  // min and max are NOT NULL in the core database, meaningless for a text.
+  music(type, { min: 0, max: 0, read_only: true });
+
 // Order = display order in Gladys.
 const FEATURES = [
-  {
-    key: FEATURE_KEYS.VOLUME,
-    // The player says the volume it reached: the state comes from it.
-    definition: music(DEVICE_FEATURE_TYPES.MUSIC.VOLUME, { min: 0, max: 100, has_feedback: true }),
-    value: (state) => state?.volume ?? null,
-  },
+  // The player says the volume it reached: the state comes from it.
+  { key: FEATURE_KEYS.VOLUME, definition: control(DEVICE_FEATURE_TYPES.MUSIC.VOLUME, 100) },
   { key: FEATURE_KEYS.PLAY, definition: button(DEVICE_FEATURE_TYPES.MUSIC.PLAY) },
   { key: FEATURE_KEYS.PAUSE, definition: button(DEVICE_FEATURE_TYPES.MUSIC.PAUSE) },
   { key: FEATURE_KEYS.PREVIOUS, definition: button(DEVICE_FEATURE_TYPES.MUSIC.PREVIOUS) },
   { key: FEATURE_KEYS.NEXT, definition: button(DEVICE_FEATURE_TYPES.MUSIC.NEXT) },
   {
+    // PAUSED 0, PLAYING 1, IDLE 2 (stopped); BUFFERING is never reported.
+    // Read-only, max 1 and with history in 1.0: same external id, the
+    // "Update" of the Discover tab makes it writable.
     key: FEATURE_KEYS.PLAYBACK_STATE,
-    definition: music(DEVICE_FEATURE_TYPES.MUSIC.PLAYBACK_STATE, {
-      min: 0,
-      max: 1,
-      read_only: true,
-      keep_history: true,
-    }),
-    // Stopped reads as paused: the core knows playing and paused only.
-    value: (state) =>
-      state ? (state.status === 'play' ? PLAYBACK.PLAYING : PLAYBACK.PAUSED) : null,
+    definition: control(DEVICE_FEATURE_TYPES.MUSIC.PLAYBACK_STATE, MUSIC_PLAYBACK_STATE.IDLE),
   },
   {
     key: FEATURE_KEYS.PLAY_NOTIFICATION,
     definition: button(DEVICE_FEATURE_TYPES.MUSIC.PLAY_NOTIFICATION),
   },
+  { key: FEATURE_KEYS.TITLE, definition: text(DEVICE_FEATURE_TYPES.MUSIC.TITLE) },
+  { key: FEATURE_KEYS.ARTIST, definition: text(DEVICE_FEATURE_TYPES.MUSIC.ARTIST) },
+  { key: FEATURE_KEYS.ALBUM, definition: text(DEVICE_FEATURE_TYPES.MUSIC.ALBUM) },
+  { key: FEATURE_KEYS.ARTWORK, definition: text(DEVICE_FEATURE_TYPES.MUSIC.ARTWORK) },
+  {
+    key: FEATURE_KEYS.DURATION,
+    definition: music(DEVICE_FEATURE_TYPES.MUSIC.DURATION, {
+      unit: DEVICE_FEATURE_UNITS.SECONDS,
+      read_only: true,
+      min: 0,
+      max: MAX_SECONDS,
+    }),
+  },
+  {
+    key: FEATURE_KEYS.POSITION,
+    definition: control(DEVICE_FEATURE_TYPES.MUSIC.POSITION, MAX_SECONDS, {
+      unit: DEVICE_FEATURE_UNITS.SECONDS,
+    }),
+  },
+  { key: FEATURE_KEYS.SHUFFLE, definition: control(DEVICE_FEATURE_TYPES.MUSIC.SHUFFLE, 1) },
+  {
+    key: FEATURE_KEYS.REPEAT,
+    definition: control(DEVICE_FEATURE_TYPES.MUSIC.REPEAT, MUSIC_REPEAT_MODE.ONE),
+  },
+  { key: FEATURE_KEYS.MUTE, definition: control(DEVICE_FEATURE_TYPES.MUSIC.MUTE, 1) },
 ];
 
 /** External ids of a player's device and features. */
@@ -170,16 +257,62 @@ export function buildDevice(gladys, player, language = 'fr') {
   };
 }
 
+const PLAYBACK_STATES = {
+  play: MUSIC_PLAYBACK_STATE.PLAYING,
+  pause: MUSIC_PLAYBACK_STATE.PAUSED,
+  stop: MUSIC_PLAYBACK_STATE.IDLE,
+};
+
+const seconds = (value) => Math.max(0, Math.round(Number(value) || 0));
+
+/** Nothing in the queue: no track, no artwork (Volumio then names its logo). */
+export const nothingLoaded = (state) => !state.uri && !state.title && !state.artist;
+
+/** music/repeat of a Volumio state: repeat + repeatSingle. */
+export const repeatMode = (state) =>
+  state.repeat
+    ? state.repeatSingle
+      ? MUSIC_REPEAT_MODE.ONE
+      : MUSIC_REPEAT_MODE.ALL
+    : MUSIC_REPEAT_MODE.OFF;
+
 /**
- * The states to publish for a player state (the features that have one).
- * @returns {Array<{ device_feature_external_id: string, state: number }>}
+ * The snapshot given to publishNowPlaying (Gladys 5.3), from parseState().
+ *   - Nothing loaded (empty queue): the texts and the artwork are cleared
+ *     explicitly (an absent key means "unchanged").
+ *   - Stopped with a track still current (Volumio keeps it): IDLE, the track
+ *     stays shown, position 0.
+ *   - A web radio: duration 0 (live); its position is not capped, the SDK
+ *     extrapolates it without a bound (a capped one would be published again
+ *     and again).
+ *   - No volume when the player has no mixer (Volumio says "").
+ * @param {object} state parseState()
+ * @param {{ artworkUrl?: string|null }} [options] the source given to artworkKey
  */
-export function featureStates(gladys, playerId, state) {
-  const ids = deviceIds(gladys, playerId);
-  return FEATURES.filter(({ value }) => typeof value === 'function')
-    .map(({ key, value }) => ({
-      device_feature_external_id: ids.feature(key),
-      state: value(state),
-    }))
-    .filter(({ state: value }) => typeof value === 'number' && Number.isFinite(value));
+export function nowPlaying(state, { artworkUrl = null } = {}) {
+  const loaded = !nothingLoaded(state);
+  const stream = isStream(state);
+  const duration = loaded && !stream ? seconds(state.duration) : 0;
+  const elapsed = seconds((state.seekMs ?? 0) / 1000);
+  const snapshot = {
+    playback_state: PLAYBACK_STATES[state.status] ?? MUSIC_PLAYBACK_STATE.IDLE,
+    title: loaded ? state.title : '',
+    artist: loaded ? state.artist : '',
+    album: loaded ? state.album : '',
+    artwork_url: loaded ? artworkUrl : null,
+    duration,
+    position:
+      loaded && state.status !== 'stop'
+        ? duration > 0
+          ? Math.min(elapsed, duration)
+          : elapsed
+        : 0,
+    shuffle: state.random ? 1 : 0,
+    repeat: repeatMode(state),
+    mute: state.mute ? 1 : 0,
+  };
+  if (state.volume !== null) {
+    snapshot.volume = state.volume;
+  }
+  return snapshot;
 }
