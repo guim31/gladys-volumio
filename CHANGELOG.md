@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-26
+
 ### Added
 
 - Gladys 5.3 music player: title, artist, album, artwork, duration, position
@@ -65,5 +67,6 @@ the notes of the version's GitHub Release.
   names, widget, messages and documentation.
 - `scripts/probe.mjs`, a read-only check of a real player.
 
-[Unreleased]: https://github.com/guim31/gladys-volumio/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/guim31/gladys-volumio/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/guim31/gladys-volumio/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/guim31/gladys-volumio/releases/tag/v1.0.1
